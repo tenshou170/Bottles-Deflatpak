@@ -267,9 +267,7 @@ class PreferencesWindow(Adw.PreferencesWindow):
         self.ui_update()
 
     def __open_steam_proton_doc(self, widget):
-        webbrowser.open(
-            "https://docs.usebottles.com/flatpak/cant-enable-steam-proton-manager"
-        )
+        webbrowser.open("https://docs.usebottles.com/faq/steam-proton-manager")
 
     def __choose_bottles_path(self, widget):
         def set_path(_dialog, response):
