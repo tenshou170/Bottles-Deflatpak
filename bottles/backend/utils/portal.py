@@ -17,6 +17,7 @@
 
 import gi
 
+
 class PortalUtils:
     """
     Utility class for interacting with XDG Desktop Portals safely.
@@ -32,6 +33,7 @@ class PortalUtils:
         try:
             gi.require_version("Xdp", "1.0")
             from gi.repository import Xdp  # type: ignore
+
             return Xdp.Portal()
         except (ImportError, ValueError):
             return None
