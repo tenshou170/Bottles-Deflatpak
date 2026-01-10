@@ -1,5 +1,5 @@
-pkgdatadir = join_paths(get_option('prefix'), get_option('datadir'), meson.project_name())
 widgetsdir = join_paths(pkgdatadir, 'bottles/frontend/widgets')
+subdir('preferences')
 
 bottles_sources = [
   '__init__.py',
@@ -10,6 +10,7 @@ bottles_sources = [
   'playtimechart_weekly.py',
   'playtimechart_hourly.py',
   'playtimechart_monthly.py',
+  'playtimechart_base.py',
   'program.py',
   'state.py',
   'component.py',

@@ -1,0 +1,193 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $PreferencesSystem: Adw.PreferencesGroup {
+  title: _("System");
+
+  Adw.EntryRow entry_name {
+    title: _("Name");
+    show-apply-button: true;
+  }
+
+  Adw.ComboRow combo_windows {
+    title: _("Windows Version");
+
+    Spinner spinner_windows {
+      tooltip-text: _("Updating Windows version, please wait…");
+      valign: center;
+      visible: false;
+    }
+
+    model: StringList str_list_windows {};
+  }
+
+  Adw.ComboRow combo_language {
+    title: _("Language");
+    subtitle: _("Choose the language to use with programs.");
+
+    model: StringList str_list_languages {};
+  }
+
+  Adw.ActionRow row_sandbox {
+    activatable-widget: switch_sandbox;
+    title: _("Dedicated Sandbox");
+    subtitle: _("Use a restricted/managed environment for this bottle.");
+
+    Button btn_manage_sandbox {
+      tooltip-text: _("Manage the Sandbox Permissions");
+      valign: center;
+      icon-name: "applications-system-symbolic";
+
+      styles [
+        "flat",
+      ]
+    }
+
+    Switch switch_sandbox {
+      valign: center;
+    }
+  }
+
+  Adw.ActionRow row_runtime {
+    activatable-widget: switch_runtime;
+    title: _("Bottles Runtime");
+    subtitle: _("Provide a bundle of extra libraries for more compatibility. Disable it if you run into issues.");
+    visible: false;
+
+    Switch switch_runtime {
+      valign: center;
+    }
+  }
+
+  Adw.ActionRow row_winebridge {
+    activatable-widget: switch_winebridge;
+    title: _("Use WineBridge");
+    subtitle: _("Start programs through WineBridge by default for this bottle.");
+
+    Switch switch_winebridge {
+      valign: center;
+    }
+  }
+
+  Adw.ActionRow row_steam_runtime {
+    activatable-widget: switch_steam_runtime;
+    title: _("Steam Runtime");
+    subtitle: _("Provide a bundle of extra libraries for more compatibility with Steam games. Disable it if you run into issues.");
+    visible: false;
+
+    Switch switch_steam_runtime {
+      valign: center;
+    }
+  }
+
+  Adw.ActionRow row_cwd {
+    title: _("Working Directory");
+    activatable-widget: btn_cwd;
+
+    Button btn_cwd_reset {
+      tooltip-text: _("Reset to Default");
+      valign: center;
+      visible: false;
+      icon-name: "edit-undo-symbolic";
+
+      styles [
+        "flat",
+      ]
+    }
+
+    Button btn_cwd {
+      valign: center;
+
+      Box {
+        spacing: 6;
+
+        Image {
+          icon-name: "document-open-symbolic";
+        }
+
+        Label label_cwd {
+          label: _("(Default)");
+        }
+      }
+    }
+  }
+
+  Adw.ActionRow row_overrides {
+    activatable: true;
+    title: _("DLL Overrides");
+
+    Image {
+      icon-name: "go-next-symbolic";
+
+      styles [
+        "dim-label"
+      ]
+    }
+  }
+
+  Adw.ActionRow row_env_variables {
+    activatable: true;
+    title: _("Environment Variables");
+
+    Image {
+      icon-name: "go-next-symbolic";
+
+      styles [
+        "dim-label"
+      ]
+    }
+  }
+
+  Adw.ActionRow row_drives {
+    activatable: true;
+    title: _("Manage Drives");
+
+    Image {
+      icon-name: "go-next-symbolic";
+
+      styles [
+        "dim-label"
+      ]
+    }
+  }
+
+  Adw.ActionRow {
+    activatable-widget: switch_auto_versioning;
+    title: _("Automatic Snapshots");
+    subtitle: _("Automatically create snapshots before installing software or changing settings.");
+
+    Switch switch_auto_versioning {
+      valign: center;
+    }
+  }
+
+  Adw.ActionRow {
+    activatable-widget: switch_versioning_compression;
+    title: _("Compression");
+    subtitle: _("Compress snapshots to reduce space. This will slow down the creation of snapshots.");
+
+    Switch switch_versioning_compression {
+      valign: center;
+    }
+  }
+
+  Adw.ActionRow {
+    activatable-widget: switch_versioning_patterns;
+    title: _("Use Exclusion Patterns");
+    subtitle: _("Exclude paths in snapshots.");
+
+    Button btn_manage_versioning_patterns {
+      tooltip-text: _("Manage Patterns");
+      valign: center;
+      icon-name: "applications-system-symbolic";
+
+      styles [
+        "flat",
+      ]
+    }
+
+    Switch switch_versioning_patterns {
+      valign: center;
+    }
+  }
+}

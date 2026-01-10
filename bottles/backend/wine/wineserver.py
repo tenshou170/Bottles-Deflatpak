@@ -3,8 +3,10 @@ import subprocess
 import time
 
 from bottles.backend.logger import Logger
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
+from bottles.backend.managers.discovery import DiscoveryManager
 from bottles.backend.utils.proc import ProcUtils
+from bottles.backend.utils.path import PathUtils
 from bottles.backend.utils.steam import SteamUtils
 from bottles.backend.wine.wineprogram import WineProgram
 
@@ -28,8 +30,8 @@ class WineServer(WineProgram):
             return False
 
         # Check using wine
-        bottle = ManagerUtils.get_bottle_path(config)
-        runner = ManagerUtils.get_runner_path(config.Runner)
+        bottle = PathUtils.get_bottle_path(config)
+        runner = PathUtils.get_runner_path(config.Runner)
 
         if config.Environment == "Steam":
             bottle = config.Path
@@ -58,8 +60,8 @@ class WineServer(WineProgram):
 
     def wait(self):
         config = self.config
-        bottle = ManagerUtils.get_bottle_path(config)
-        runner = ManagerUtils.get_runner_path(config.Runner)
+        bottle = PathUtils.get_bottle_path(config)
+        runner = PathUtils.get_runner_path(config.Runner)
 
         if config.Environment == "Steam":
             bottle = config.Path
@@ -90,7 +92,7 @@ class WineServer(WineProgram):
         )
 
     def force_kill(self):
-        bottle = ManagerUtils.get_bottle_path(self.config)
+        bottle = PathUtils.get_bottle_path(self.config)
         procs = ProcUtils.get_by_env(f"WINEPREFIX={bottle}")
         for proc in procs:
             proc.kill()

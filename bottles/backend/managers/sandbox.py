@@ -95,8 +95,15 @@ class SandboxManager:
             for device in glob.glob("/dev/video*"):
                 _cmd += ["--dev-bind", shlex.quote(device), shlex.quote(device)]
 
+        if os.path.exists("/dev/ntsync"):
+            _cmd += ["--dev-bind", "/dev/ntsync", "/dev/ntsync"]
+
         _cmd.append("--share-net" if self.share_net else "--unshare-net")
         _cmd.append("--share-user" if self.share_user else "--unshare-user")
+        _cmd.append("--unshare-pid")
+        _cmd.append("--unshare-uts")
+        _cmd.append("--unshare-ipc")
+        _cmd.append("--unshare-cgroup")
         _cmd.append(cmd)
 
         return _cmd

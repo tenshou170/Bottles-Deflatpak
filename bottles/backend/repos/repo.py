@@ -30,18 +30,29 @@ logging = Logger()
 class Repo:
     name: str = ""
 
-    def __init__(self, url: str, index: str, offline: bool = False):
-        self.url = url
+    def __init__(self, repo_data: dict, offline: bool = False):
+        self.url = repo_data["url"]
         self.catalog = None
 
         def set_catalog(result, error=None):
             self.catalog = result
             EventManager.done(Events(self.name + ".fetching"))
 
-        RunAsync(self.__get_catalog, callback=set_catalog, index=index, offline=offline)
+        RunAsync(
+            self.__get_catalog,
+            callback=set_catalog,
+            repo_data=repo_data,
+            offline=offline,
+        )
 
-    def __get_catalog(self, index: str, offline: bool = False):
-        if index in ["", None] or offline:
+    def __get_catalog(self, repo_data: dict, offline: bool = False):
+        if offline:
+            return {}
+
+        repo_data["ready"].wait()
+        index = repo_data["index"]
+
+        if index in ["", None]:
             return {}
 
         try:

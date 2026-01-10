@@ -1,4 +1,3 @@
-pkgdatadir = join_paths(get_option('prefix'), get_option('datadir'), meson.project_name())
 managersdir = join_paths(pkgdatadir, 'bottles/backend/managers')
 
 bottles_sources = [
@@ -26,7 +25,10 @@ bottles_sources = [
   'registry_rule.py',
   'steamgriddb.py',
   'thumbnail.py',
-  'playtime.py'
+  'playtime.py',
+  'system.py',
+  'discovery.py',
+  'bottle_manager.py'
 ]
 
 install_data(bottles_sources, install_dir: managersdir)

@@ -2,8 +2,8 @@
 Name=@APP_NAME@
 Comment=Run Windows software
 Icon=@APP_ID@
-Exec=bottles %u
-TryExec=bottles
+Exec=@BINARY_NAME@ %u
+TryExec=@BINARY_NAME@
 Terminal=false
 Type=Application
 Categories=Utility;Game;Graphics;3DGraphics;Emulator;GNOME;GTK;

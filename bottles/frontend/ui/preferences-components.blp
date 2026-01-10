@@ -1,0 +1,71 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $PreferencesComponents: Adw.PreferencesGroup {
+  title: _("Components");
+
+  Adw.ComboRow combo_runner {
+    title: _("Runner");
+    subtitle: _("The version of the Wine compatibility layer.");
+
+    Spinner spinner_runner {
+      tooltip-text: _("Updating Runner and components, please wait…");
+      valign: center;
+      visible: false;
+    }
+
+    model: StringList str_list_runner {};
+  }
+
+  Adw.ComboRow combo_dxvk {
+    title: _("DXVK");
+    subtitle: _("Improve Direct3D 8/9/10/11 compatibility by translating it to Vulkan.");
+
+    Spinner spinner_dxvk {
+      tooltip-text: _("Updating DXVK, please wait…");
+      valign: center;
+      visible: false;
+    }
+
+    model: StringList str_list_dxvk {};
+  }
+
+  Adw.ComboRow combo_vkd3d {
+    title: _("VKD3D");
+    subtitle: _("Improve Direct3D 12 compatibility by translating it to Vulkan.");
+
+    Spinner spinner_vkd3d {
+      tooltip-text: _("Updating VKD3D, please wait…");
+      valign: center;
+      visible: false;
+    }
+
+    model: StringList str_list_vkd3d {};
+  }
+
+  Adw.ComboRow combo_nvapi {
+    title: _("DXVK NVAPI");
+    visible: false;
+
+    Spinner spinner_nvapi {
+      tooltip-text: _("Updating DXVK-NVAPI, please wait…");
+      valign: center;
+      visible: false;
+    }
+
+    model: StringList str_list_nvapi {};
+  }
+
+  Adw.ComboRow combo_latencyflex {
+    title: _("LatencyFleX");
+    subtitle: _("Increase responsiveness. Can be detected by some anti-cheat software.");
+
+    Spinner spinner_latencyflex {
+      tooltip-text: _("Updating LatencyFleX, please wait…");
+      valign: center;
+      visible: false;
+    }
+
+    model: StringList str_list_latencyflex {};
+  }
+}

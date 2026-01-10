@@ -1,19 +1,4 @@
 # window.py
-#
-# Copyright 2025 mirkobrombin <brombin94@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, in version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
 
 import contextlib
 import os
@@ -67,7 +52,7 @@ class BottlesWindow(Adw.ApplicationWindow):
     headerbar = Gtk.Template.Child()
     view_switcher_title = Gtk.Template.Child()
     view_switcher_bar = Gtk.Template.Child()
-    main_leaf = Gtk.Template.Child()
+    main_nav = Gtk.Template.Child()
     toasts = Gtk.Template.Child()
     # endregion
 
@@ -285,16 +270,23 @@ class BottlesWindow(Adw.ApplicationWindow):
                 self.show_onboard_view()
 
             # Pages
-            self.page_details = DetailsView(self)
+            if not hasattr(self, "details_view"):
+                self.details_view = DetailsView(self)
+                self.nav_page_details = Adw.NavigationPage.new(
+                    self.details_view, _("Details")
+                )
+                self.nav_page_details.set_tag("details")
+                self.main_nav.add(self.nav_page_details)
+                self.page_details = self.details_view
+
+            self.importer_view = ImporterView(self)
+            self.page_importer = Adw.NavigationPage.new(
+                self.importer_view, _("Importer")
+            )
+            self.page_importer.set_tag("importer")
+
             self.page_list = BottleView(self, arg_bottle=self.arg_bottle)
-            self.page_importer = ImporterView(self)
             self.page_library = LibraryView(self)
-
-            self.main_leaf.append(self.page_details)
-            self.main_leaf.append(self.page_importer)
-
-            self.main_leaf.get_page(self.page_details).set_navigatable(False)
-            self.main_leaf.get_page(self.page_importer).set_navigatable(False)
 
             self.stack_main.add_titled(
                 child=self.page_list, name="page_list", title=_("Bottles")
@@ -380,11 +372,14 @@ class BottlesWindow(Adw.ApplicationWindow):
             self.props.application.send_notification(None, notification)
 
     def go_back(self, *_args):
-        self.main_leaf.navigate(direction=Adw.NavigationDirection.BACK)
+        self.main_nav.pop()
 
-    def show_details_view(self, widget=False, config: Optional[BottleConfig] = None):
-        self.main_leaf.set_visible_child(self.page_details)
-        self.page_details.set_config(config or BottleConfig())
+    def show_details_view(self, config=None):
+        if config:
+            self.page_details.set_config(config)
+
+        if self.main_nav.get_visible_page() != self.nav_page_details:
+            self.main_nav.push(self.nav_page_details)
 
     def show_loading_view(self, widget=False):
         self.lock_ui()
@@ -402,7 +397,8 @@ class BottlesWindow(Adw.ApplicationWindow):
         self.stack_main.set_visible_child_name("page_list")
 
     def show_importer_view(self, widget=False):
-        self.main_leaf.set_visible_child(self.page_importer)
+        if self.main_nav.get_visible_page() != self.page_importer:
+            self.main_nav.push(self.page_importer)
 
     def show_prefs_view(self, widget=False, view=0):
         preferences_window = PreferencesWindow(self)

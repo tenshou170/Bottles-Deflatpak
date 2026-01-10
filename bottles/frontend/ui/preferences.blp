@@ -1,7 +1,7 @@
 using Gtk 4.0;
 using Adw 1;
 
-template $PreferencesWindow: Adw.PreferencesWindow {
+template $PreferencesWindow: Adw.PreferencesDialog {
   title: _("Preferences");
   modal: true;
   default-width: 750;
@@ -267,7 +267,8 @@ template $PreferencesWindow: Adw.PreferencesWindow {
         StackPage {
           name: "installers_list";
 
-          child: Adw.PreferencesPage {
+          child: Box {
+            orientation: vertical;
             Adw.PreferencesGroup list_runners {
               vexpand: true;
               hexpand: true;
@@ -302,7 +303,8 @@ template $PreferencesWindow: Adw.PreferencesWindow {
        StackPage {
          name: "cache_list";
 
-         child: Adw.PreferencesPage {
+         child: Box {
+           orientation: vertical;
            Adw.PreferencesGroup {
              title: _("Overview");
              description: _("Manage cached files used to speed up downloads and bottle creation.");
@@ -443,7 +445,8 @@ template $PreferencesWindow: Adw.PreferencesWindow {
        StackPage {
          name: "dlls_list";
 
-         child: Adw.PreferencesPage {
+         child: Box {
+           orientation: vertical;
            Adw.PreferencesGroup list_dlls {
              vexpand: true;
              hexpand: true;

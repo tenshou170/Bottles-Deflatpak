@@ -1,4 +1,3 @@
-pkgdatadir = join_paths(get_option('prefix'), get_option('datadir'), meson.project_name())
 utilsdir = join_paths(pkgdatadir, 'bottles/frontend/utils')
 
 bottles_sources = [
@@ -8,6 +7,7 @@ bottles_sources = [
   'filters.py',
   'playtime.py',
   'sh.py',
+  'program_controller.py',
 ]
 
 install_data(bottles_sources, install_dir: utilsdir)

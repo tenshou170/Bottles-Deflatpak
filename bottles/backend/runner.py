@@ -22,8 +22,9 @@ from bottles.backend.logger import Logger
 from bottles.backend.managers.runtime import RuntimeManager
 from bottles.backend.models.config import BottleConfig
 from bottles.backend.models.result import Result
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.discovery import DiscoveryManager
 from bottles.backend.utils.steam import SteamUtils
+from bottles.backend.utils.path import PathUtils
 from bottles.backend.wine.wineboot import WineBoot
 
 if TYPE_CHECKING:
@@ -54,7 +55,7 @@ class Runner:
         wineboot = WineBoot(config)
 
         if not runner.startswith("sys-"):
-            runner_path = ManagerUtils.get_runner_path(runner)
+            runner_path = PathUtils.get_runner_path(runner)
 
             if not os.path.exists(runner_path):
                 logging.error(f"Runner {runner} not found in {runner_path}")
@@ -88,7 +89,7 @@ class Runner:
         which are built to work without the Steam Runtime.
         """
         if SteamUtils.is_proton(
-            ManagerUtils.get_runner_path(runner)
+            PathUtils.get_runner_path(runner)
         ) and RuntimeManager.get_runtimes("steam"):
             manager.update_config(config, "use_steam_runtime", True, "Parameters")
 

@@ -1,4 +1,3 @@
-pkgdatadir = join_paths(get_option('prefix'), get_option('datadir'), meson.project_name())
 dialogsdir = join_paths(pkgdatadir, 'bottles/frontend/windows')
 
 bottles_sources = [

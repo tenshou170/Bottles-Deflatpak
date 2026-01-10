@@ -9,7 +9,7 @@ from typing import List, Dict, Optional
 from bottles.backend.globals import Paths
 from bottles.backend.logger import Logger
 from bottles.backend.utils.generic import random_string
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
 from bottles.backend.wine.winedbg import WineDbg
 from bottles.backend.wine.wineprogram import WineProgram
 
@@ -112,7 +112,7 @@ class Reg(WineProgram):
         config = self.config
         logging.info(f"Importing bundle to {config.Name} registry")
         winedbg = WineDbg(config)
-        reg_file = ManagerUtils.get_temp_path(f"{uuid.uuid4()}.reg")
+        reg_file = SystemManager.get_temp_path(f"{uuid.uuid4()}.reg")
 
         # prepare reg file
         with open(reg_file, "w") as f:

@@ -1,4 +1,3 @@
-pkgdatadir = join_paths(get_option('prefix'), get_option('datadir'), meson.project_name())
 backenddir = join_paths(pkgdatadir, 'bottles/backend')
 
 params_file = configure_file(

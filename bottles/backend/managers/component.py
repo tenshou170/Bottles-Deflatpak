@@ -38,8 +38,9 @@ from bottles.backend.state import (
     TaskStreamUpdateHandler,
 )
 from bottles.backend.utils.file import FileUtils
+from bottles.backend.utils.path import PathUtils
 from bottles.backend.utils.generic import is_glibc_min_available
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.discovery import DiscoveryManager
 
 logging = Logger()
 
@@ -463,19 +464,19 @@ class ComponentManager:
             )
 
         if component_type in ["runner", "runner:proton"]:
-            path = ManagerUtils.get_runner_path(component_name)
+            path = PathUtils.get_runner_path(component_name)
 
         elif component_type == "dxvk":
-            path = ManagerUtils.get_dxvk_path(component_name)
+            path = PathUtils.get_dxvk_path(component_name)
 
         elif component_type == "vkd3d":
-            path = ManagerUtils.get_vkd3d_path(component_name)
+            path = PathUtils.get_vkd3d_path(component_name)
 
         elif component_type == "nvapi":
-            path = ManagerUtils.get_nvapi_path(component_name)
+            path = PathUtils.get_nvapi_path(component_name)
 
         elif component_type == "latencyflex":
-            path = ManagerUtils.get_latencyflex_path(component_name)
+            path = PathUtils.get_latencyflex_path(component_name)
 
         else:
             logging.error(f"Unknown component type: {component_type}")

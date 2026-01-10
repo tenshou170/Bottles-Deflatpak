@@ -1,4 +1,3 @@
-pkgdatadir = join_paths(get_option('prefix'), get_option('datadir'), meson.project_name())
 viewsdir = join_paths(pkgdatadir, 'bottles/frontend/views')
 
 bottles_sources = [

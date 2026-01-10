@@ -16,6 +16,7 @@
 #
 
 import os
+import threading
 
 import pycurl
 
@@ -56,15 +57,18 @@ class RepositoryManager:
         self.aborted_connections = 0
         SignalManager.connect(Signals.ForceStopNetworking, self.__stop_index)
         self.data = DataManager()
+        self.repos = {name: data.copy() for name, data in self.__repositories.items()}
+        for repo in self.repos.values():
+            repo["ready"] = threading.Event()
 
         self.__check_personals()
         if get_index:
             self.__get_index()
 
     def get_repo(self, name: str, offline: bool = False):
-        if name in self.__repositories:
-            repo = self.__repositories[name]
-            return repo["cls"](repo["url"], repo["index"], offline=offline)
+        if name in self.repos:
+            repo = self.repos[name]
+            return repo["cls"](repo, offline=offline)
 
         logging.error(f"Repository {name} not found")
 
@@ -90,12 +94,12 @@ class RepositoryManager:
         if not _personals:
             return
 
-        for repo in self.__repositories:
+        for repo in self.repos:
             if repo not in _personals:
                 continue
 
             _url = _personals[repo]
-            self.__repositories[repo]["url"] = _url
+            self.repos[repo]["url"] = _url
             logging.info(f"Using personal {repo} repository at {_url}")
 
     def __curl_progress(self, _download_t, _download_d, _upload_t, _upload_d):
@@ -114,7 +118,7 @@ class RepositoryManager:
 
         threads = []
 
-        for repo, data in self.__repositories.items():
+        for repo, data in self.repos.items():
 
             def query(_repo, _data):
                 __index = os.path.join(_data["url"], f"{APP_VERSION}.yml")
@@ -140,6 +144,7 @@ class RepositoryManager:
 
                     if url.startswith("file://") or c.getinfo(c.RESPONSE_CODE) == 200:
                         _data["index"] = url
+                        _data["ready"].set()
                         SignalManager.send(
                             Signals.RepositoryFetched, Result(True, data=total)
                         )
@@ -147,6 +152,7 @@ class RepositoryManager:
 
                     c.close()
                 else:
+                    _data["ready"].set()
                     SignalManager.send(
                         Signals.RepositoryFetched, Result(False, data=total)
                     )
@@ -155,7 +161,6 @@ class RepositoryManager:
             thread = RunAsync(query, _repo=repo, _data=data)
             threads.append(thread)
 
-        for t in threads:
-            t.join()
+        # Non-blocking: we don't join threads anymore
 
         self.do_get_index = True

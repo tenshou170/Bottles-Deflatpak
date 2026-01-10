@@ -21,8 +21,9 @@ import os
 from bottles.backend.dlls.dll import DLLComponent
 from bottles.backend.logger import Logger
 from bottles.backend.models.config import BottleConfig
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.discovery import DiscoveryManager
 from bottles.backend.utils.nvidia import get_nvidia_dll_path
+from bottles.backend.utils.path import PathUtils
 
 logging = Logger()
 
@@ -41,7 +42,7 @@ class NVAPIComponent(DLLComponent):
 
     @staticmethod
     def get_base_path(version: str) -> str:
-        return ManagerUtils.get_nvapi_path(version)
+        return PathUtils.get_nvapi_path(version)
 
     @staticmethod
     def check_bottle_nvngx(bottle_path: str, bottle_config: BottleConfig):

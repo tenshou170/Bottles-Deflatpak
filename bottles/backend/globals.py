@@ -82,6 +82,8 @@ vkbasalt_available = Paths.is_vkbasalt_available()
 mangohud_available = shutil.which("mangohud") or False
 obs_vkc_available = shutil.which("obs-vkcapture") or False
 vmtouch_available = shutil.which("vmtouch") or False
+ntsync_available = os.path.exists("/dev/ntsync")
+umu_run_available = shutil.which("umu-run") or False
 base_version = ""
 
 # encoding detection correction, following windows defaults

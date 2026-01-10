@@ -15,11 +15,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from bottles.backend.utils.path import PathUtils
 import os
 
 from bottles.backend.logger import Logger
 from bottles.backend.models.config import BottleConfig
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
 
 logging = Logger()
 
@@ -38,7 +39,7 @@ class ThumbnailManager:
 
     @staticmethod
     def __load_grid(config: BottleConfig, uri: str):
-        bottle_path = ManagerUtils.get_bottle_path(config)
+        bottle_path = PathUtils.get_bottle_path(config)
         file_name = uri[5:]
         path = os.path.join(bottle_path, "grids", file_name)
 

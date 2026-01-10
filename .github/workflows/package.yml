@@ -2,22 +2,25 @@ name: CI/CD
 
 on:
   push:
-    branches: [main]
-    tags:
-      - "v*"
+    branches: [prototype]
     paths-ignore:
       - "**.md"
       - ".gitignore"
       - "LICENSE"
       - "po/**"
   pull_request:
-    branches: [main]
+    branches: [prototype]
     paths-ignore:
       - "**.md"
       - ".gitignore"
       - "LICENSE"
       - "po/**"
   workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Manual release tag (e.g. latest-devel)'
+        required: false
+        default: ''
 
 jobs:
   lint:
@@ -59,14 +62,17 @@ jobs:
 
       - name: Build Binary Tarball
         run: |
+          VERSION=$(grep -oP "version: '\K[^']+" meson.build | head -1)
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
           chmod +x build-packages.sh
-          ./build-packages.sh
+          ./build-packages.sh --development
+          mv bottles-deflatpak-${VERSION}.tar.gz bottles-devel-v${VERSION}.tar.gz
 
       - name: Upload Tarball
         uses: actions/upload-artifact@v4
         with:
-          name: binary-tarball
-          path: "*.tar.gz"
+          name: bottles-devel-v${{ env.VERSION }}.tar.gz
+          path: bottles-devel-v*.tar.gz
 
   deb:
     name: "Build DEB (Debian/Ubuntu)"
@@ -103,15 +109,18 @@ jobs:
       - name: Build Debian Package
         run: |
           cp -r packaging/deb/debian .
+          sed -i 's/Package: bottles/Package: bottles-devel/' debian/control
           # Use -d to skip build dependency check (satisfied by pip meson)
-          dpkg-buildpackage -d -us -uc -b
-          mv ../bottles_*.deb .
+          DEB_MESON_FLAGS="-Dprofile=development" dpkg-buildpackage -d -us -uc -b
+          VERSION=$(grep -oP "version: '\K[^']+" meson.build | head -1)
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          mv ../bottles-devel_${VERSION}*.deb bottles-devel_${VERSION}_all.deb
 
       - name: Upload DEB
         uses: actions/upload-artifact@v4
         with:
-          name: deb-package
-          path: "bottles_*.deb"
+          name: bottles-devel_${{ env.VERSION }}_all.deb
+          path: bottles-devel_*.deb
 
   rpm:
     name: "Build RPM (Fedora)"
@@ -142,6 +151,7 @@ jobs:
       - name: Prepare & Build RPM
         run: |
           VERSION=$(grep -oP "version: '\K[^']+" meson.build | head -1)
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
           # Setup local rpmbuild directory in workspace
           mkdir -p rpmbuild/{SOURCES,SPECS,BUILD,RPMS,SRPMS}
           # Use tar --transform to add the required directory prefix
@@ -150,44 +160,99 @@ jobs:
           cp packaging/rpm/bottles.spec rpmbuild/SPECS/
           sed -i "s|Source0:.*|Source0: bottles-v${VERSION}.tar.gz|" rpmbuild/SPECS/bottles.spec
           # Use --nodeps to skip package database checks
-          rpmbuild --nodeps --define "_topdir $(pwd)/rpmbuild" -bb rpmbuild/SPECS/bottles.spec
+          rpmbuild --nodeps --define "_topdir $(pwd)/rpmbuild" --define "meson_args -Dprofile=development" --define "is_devel 1" -bb rpmbuild/SPECS/bottles.spec
 
       - name: Upload RPMs
         uses: actions/upload-artifact@v4
         with:
-          name: rpm-package
+          name: bottles-devel-${{ env.VERSION }}-fedora-rpm
           path: rpmbuild/RPMS/noarch/*.rpm
 
   release:
     name: "Create Release"
-    if: startsWith(github.ref, 'refs/tags/')
+    if: github.event_name == 'workflow_dispatch' || github.ref_name == 'prototype'
     needs: [tarball, deb, rpm]
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@v4
+      - name: Get Version
+        id: get_version
+        run: |
+          VERSION=$(grep -oP "version: '\K[^']+" meson.build | head -1)
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+
+          # Priority: Input Tag > Standard devel tag
+          INPUT_TAG="${{ github.event.inputs.tag_name }}"
+          if [ -n "$INPUT_TAG" ]; then
+            echo "TAG=${INPUT_TAG}" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=v${VERSION}-devel" >> $GITHUB_OUTPUT
+          fi
+
       - name: Download Tarball
         uses: actions/download-artifact@v4
         with:
-          name: binary-tarball
+          name: bottles-devel-v${{ steps.get_version.outputs.VERSION }}.tar.gz
 
       - name: Download DEB
         uses: actions/download-artifact@v4
         with:
-          name: deb-package
+          name: bottles-devel_${{ steps.get_version.outputs.VERSION }}_all.deb
 
       - name: Download RPM
         uses: actions/download-artifact@v4
         with:
-          name: rpm-package
+          name: bottles-devel-${{ steps.get_version.outputs.VERSION }}-fedora-rpm
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ steps.get_version.outputs.TAG }}
+          name: "Bottles (Development) ${{ steps.get_version.outputs.VERSION }}"
           files: |
             *.tar.gz
             *.deb
             *.rpm
-          draft: true
-          prerelease: false
+          draft: false
+          prerelease: true
+          make_latest: false
           generate_release_notes: true
+          append_body: false
+          body: |
+            **Bottles Development Build**
+            This is an automated build from the `prototype` branch.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  cleanup:
+    name: "Cleanup Old Devel Releases"
+    if: github.event_name == 'push' && github.ref_name == 'prototype'
+    needs: [release]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Cleanup Old Devel Releases
+        run: |
+          # Fetch all releases that match the -devel pattern
+          # Using --limit 100 to ensure we see enough of them
+          RELEASES=$(gh release list --limit 100 --json tagName | jq -r '.[] | select(.tagName | contains("-devel")) | .tagName')
+          if [ -z "$RELEASES" ]; then
+            echo "No development releases found to cleanup."
+            exit 0
+          fi
+          # Keep the most recent release (the one just created/updated)
+          # 'gh release list' returns them sorted by date desc
+          OLD_RELEASES=$(echo "$RELEASES" | tail -n +2)
+          if [ -z "$OLD_RELEASES" ]; then
+            echo "Only one development release found. Skipping cleanup."
+            exit 0
+          fi
+          for TAG in $OLD_RELEASES; do
+            echo "Deleting old development release and tag: $TAG"
+            gh release delete "$TAG" --yes --cleanup-tag || echo "Warning: Failed to delete $TAG, continuing..."
+          done
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -2,101 +2,92 @@ using Gtk 4.0;
 using Adw 1;
 
 template $Details: Adw.Bin {
-  Adw.Leaflet leaflet {
-    can-navigate-back: true;
-    can-unfold: false;
+  Adw.NavigationSplitView split_view {
     hexpand: true;
 
-    Box {
-      orientation: vertical;
-
-      Adw.HeaderBar sidebar_headerbar {
-        show-end-title-buttons: false;
-
-        title-widget: Adw.WindowTitle sidebar_title {
-          title: _("Details");
-        };
-
-        [start]
-        Button btn_back {
-          icon-name: "go-previous-symbolic";
-          tooltip-text: _("Go Back");
-        }
-
-        [end]
-        Box default_actions {}
-      }
-
-      Box default_view {}
-    }
-
-    Adw.LeafletPage {
-      navigatable: false;
-
-      child: Separator panel_separator {
+    sidebar: Adw.NavigationPage {
+      title: _("Details");
+      child: Box {
         orientation: vertical;
 
-        styles [
-          "sidebar",
-        ]
+        Adw.HeaderBar sidebar_headerbar {
+          show-end-title-buttons: false;
+
+          title-widget: Adw.WindowTitle sidebar_title {
+            title: _("Details");
+          };
+
+          [start]
+          Button btn_back {
+            icon-name: "go-previous-symbolic";
+            tooltip-text: _("Go Back");
+          }
+
+          [end]
+          Box default_actions {}
+        }
+
+        Box default_view {}
       };
-    }
+    };
 
-    Box content {
-      orientation: vertical;
+    content: Adw.NavigationPage {
+      child: Box content {
+        orientation: vertical;
 
-      Adw.HeaderBar content_headerbar {
-        show-start-title-buttons: false;
+        Adw.HeaderBar content_headerbar {
+          show-start-title-buttons: false;
 
-        title-widget: Adw.WindowTitle content_title {};
+          title-widget: Adw.WindowTitle content_title {};
 
-        [start]
-        Button btn_back_sidebar {
-          icon-name: "go-previous-symbolic";
-          tooltip-text: _("Go Back");
-          visible: false;
+          [start]
+          Button btn_back_sidebar {
+            icon-name: "go-previous-symbolic";
+            tooltip-text: _("Go Back");
+            visible: false;
+          }
+
+          [end]
+          Box box_actions {}
+
+          [end]
+          MenuButton btn_operations {
+            visible: false;
+            tooltip-text: _("Operations");
+            popover: pop_tasks;
+
+            Spinner spinner_tasks {}
+
+            styles [
+              "flat",
+            ]
+          }
         }
 
-        [end]
-        Box box_actions {}
-
-        [end]
-        MenuButton btn_operations {
-          visible: false;
-          tooltip-text: _("Operations");
-          popover: pop_tasks;
-
-          Spinner spinner_tasks {}
-
-          styles [
-            "flat",
-          ]
+        Stack stack_bottle {
+          transition-type: crossfade;
+          hexpand: true;
+          vexpand: true;
         }
-      }
-
-      Stack stack_bottle {
-        transition-type: crossfade;
-        hexpand: true;
-        vexpand: true;
-      }
-    }
+      };
+    };
   }
-}
 
-Popover pop_tasks {
-  Box {
-    orientation: vertical;
-    spacing: 3;
-
+  Popover pop_tasks {
     Box {
       orientation: vertical;
+      spacing: 3;
 
-      ListBox list_tasks {
-        selection-mode: none;
+      Box {
+        orientation: vertical;
 
-        styles [
-          "content",
-        ]
+        ListBox list_tasks {
+          selection-mode: none;
+
+          styles [
+            "content",
+          ]
+        }
       }
     }
   }

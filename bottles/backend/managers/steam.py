@@ -34,8 +34,9 @@ from bottles.backend.models.samples import Samples
 from bottles.backend.models.vdict import VDFDict
 from bottles.backend.state import SignalManager, Signals
 from bottles.backend.utils import vdf
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
 from bottles.backend.utils.steam import SteamUtils
+from bottles.backend.utils.path import PathUtils
 from bottles.backend.wine.winecommand import WineCommand
 
 logging = Logger()
@@ -69,7 +70,7 @@ class SteamManager:
         if self.is_windows and self.config:
             paths = [
                 os.path.join(
-                    ManagerUtils.get_bottle_path(self.config),
+                    PathUtils.get_bottle_path(self.config),
                     "drive_c/Program Files (x86)/Steam",
                 )
             ]
@@ -257,7 +258,7 @@ class SteamManager:
                 "LauncherPath", "C:\\Program Files (x86)\\Steam\\steam.exe"
             )
             _executable = _path.split("\\")[-1]
-            _folder = ManagerUtils.get_exe_parent_dir(self.config, _path)
+            _folder = SystemManager.get_exe_parent_dir(self.config, _path)
             apps.append(
                 {
                     "executable": _executable,
@@ -543,8 +544,8 @@ class SteamManager:
         shortcut = {
             "AppName": program_name,
             "Exe": cmd,
-            "StartDir": ManagerUtils.get_bottle_path(self.config),
-            "icon": ManagerUtils.extract_icon(self.config, program_name, program_path),
+            "StartDir": PathUtils.get_bottle_path(self.config),
+            "icon": SystemManager.extract_icon(self.config, program_name, program_path),
             "ShortcutPath": "",
             "LaunchOptions": args.format(self.config.Name, program_name),
             "IsHidden": 0,

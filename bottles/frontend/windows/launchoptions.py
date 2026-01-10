@@ -1,26 +1,11 @@
 # launchoptions.py
-#
-# Copyright 2025 mirkobrombin <brombin94@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, in version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
 
 from gettext import gettext as _
 
 from gi.repository import Adw, GLib, GObject, Gtk
 
 from bottles.backend.logger import Logger
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
 
 logging = Logger()
 
@@ -207,7 +192,7 @@ class LaunchOptionsDialog(Adw.Window):
         if program.get("folder") not in (
             "",
             None,
-            ManagerUtils.get_exe_parent_dir(self.config, self.program["path"]),
+            SystemManager.get_exe_parent_dir(self.config, self.program["path"]),
         ):
             self.action_cwd.set_subtitle(program["folder"])
             self.btn_cwd_reset.set_visible(True)
@@ -380,7 +365,7 @@ class LaunchOptionsDialog(Adw.Window):
         """
         This function reset the script path.
         """
-        self.program["folder"] = ManagerUtils.get_exe_parent_dir(
+        self.program["folder"] = SystemManager.get_exe_parent_dir(
             self.config, self.program["path"]
         )
         self.action_cwd.set_subtitle(self.__default_cwd_msg)

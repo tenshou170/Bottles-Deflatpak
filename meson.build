@@ -19,14 +19,29 @@ APP_MAJOR_VERSION = _version_array[0]
 APP_MINOR_VERSION = _version_array[1]
 PROFILE = get_option('profile')
 
+BINARY_NAME = 'bottles'
+CLI_BINARY_NAME = 'bottles-cli'
+
 if PROFILE == 'development'
-	APP_VERSION += '-' + run_command(
-		'git', 'rev-parse', '--short', 'HEAD',
-		check: true
-	).stdout().strip()
+	git = find_program('git', required: false)
+	if git.found()
+		git_command = run_command(git, 'rev-parse', '--short', 'HEAD', check: false)
+		if git_command.returncode() == 0
+			APP_VERSION += '-' + git_command.stdout().strip()
+		endif
+	endif
 	APP_NAME += ' (Development)'
 	APP_ID += '.' + 'Devel'
+	BINARY_NAME = 'bottles-devel'
+	CLI_BINARY_NAME = 'bottles-devel-cli'
+	GETTEXT_PACKAGE = BINARY_NAME
+	pkgdatadir = join_paths(get_option('prefix'), get_option('datadir'), BINARY_NAME)
+else
+	GETTEXT_PACKAGE = meson.project_name()
+	pkgdatadir = join_paths(get_option('prefix'), get_option('datadir'), meson.project_name())
 endif
+
+APP_ID_PATH = '/' + APP_ID.replace('.', '/') + '/'
 
 
 gnome = import('gnome')

@@ -6,7 +6,7 @@ from bottles.backend.logger import Logger
 from bottles.backend.models.config import BottleConfig
 from bottles.backend.models.registry_rule import RegistryRule
 from bottles.backend.wine.reg import Reg
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
 
 if TYPE_CHECKING:  # pragma: no cover
     from bottles.backend.managers.manager import Manager
@@ -75,7 +75,7 @@ class RegistryRuleManager:
             if not rule.keys.strip():
                 continue
             logging.info(f"Applying registry rule '{name}' for {config.Name}")
-            reg_file = ManagerUtils.get_temp_path(f"{uuid.uuid4()}.reg")
+            reg_file = SystemManager.get_temp_path(f"{uuid.uuid4()}.reg")
             keys = rule.keys.lstrip()
             has_header = keys.upper().startswith("REGEDIT4") or keys.lower().startswith(
                 "windows registry editor version"

@@ -63,6 +63,9 @@ class SteamUtils:
 
         commandline = data.get("manifest", {}).get("commandline", {})
 
+        if os.path.isfile(os.path.join(path, "proton")):
+            return True
+
         return "proton" in compat_layer_name or "proton" in commandline
 
     @staticmethod
@@ -133,3 +136,35 @@ class SteamUtils:
 
         prefix = " ".join(prefix_list)
         return prefix, args, env_vars
+
+    @staticmethod
+    def get_compatibility_tools_paths() -> list[str]:
+        """
+        Get all common paths where Steam compatibility tools (Proton) might be found.
+        """
+        paths = [
+            os.path.join(
+                os.path.expanduser("~"), ".var/app/com.valvesoftware.Steam/data/Steam"
+            ),
+            os.path.join(os.path.expanduser("~"), ".local/share/Steam"),
+            os.path.join(os.path.expanduser("~"), ".steam/root"),
+            os.path.join(os.path.expanduser("~"), ".steam/steam"),
+        ]
+        ct_paths = []
+        for p in paths:
+            ct_path = os.path.join(p, "compatibilitytools.d")
+            if os.path.isdir(ct_path):
+                ct_paths.append(ct_path)
+        return ct_paths
+
+    @staticmethod
+    def get_proton_root(path: str) -> Optional[str]:
+        """
+        Given a path inside a Proton directory, find its root (the one with toolmanifest.vdf).
+        """
+        curr = path
+        while curr and curr != "/":
+            if os.path.isfile(os.path.join(curr, "toolmanifest.vdf")):
+                return curr
+            curr = os.path.dirname(curr)
+        return None

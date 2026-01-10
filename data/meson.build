@@ -3,6 +3,8 @@ conf.set('APP_ID', APP_ID)
 conf.set('BASE_ID', BASE_ID)
 conf.set('APP_NAME', APP_NAME)
 conf.set('DEVELOPER_ID', DEVELOPER_ID)
+conf.set('APP_ID_PATH', APP_ID_PATH)
+conf.set('BINARY_NAME', BINARY_NAME)
 
 desktop = i18n.merge_file(
   input: configure_file(
@@ -55,7 +57,11 @@ if appstream_util.found()
   )
 endif
 
-install_data('com.usebottles.bottles.gschema.xml',
+configure_file(
+  input: 'com.usebottles.bottles.gschema.xml.in',
+  output: APP_ID + '.gschema.xml',
+  configuration: conf,
+  install: true,
   install_dir: join_paths(get_option('datadir'), 'glib-2.0/schemas')
 )
 

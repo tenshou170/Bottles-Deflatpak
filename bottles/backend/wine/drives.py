@@ -1,8 +1,9 @@
+from bottles.backend.utils.path import PathUtils
 import os
 
 from bottles.backend.logger import Logger
 from bottles.backend.models.config import BottleConfig
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
 
 logging = Logger()
 
@@ -10,7 +11,7 @@ logging = Logger()
 class Drives:
     def __init__(self, config: BottleConfig):
         self.config = config
-        bottle = ManagerUtils.get_bottle_path(self.config)
+        bottle = PathUtils.get_bottle_path(self.config)
         self.dosdevices_path = os.path.join(bottle, "dosdevices")
 
     def get_all(self):

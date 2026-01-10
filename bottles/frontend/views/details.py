@@ -1,20 +1,4 @@
 # details.py
-#
-# Copyright 2025 mirkobrombin <brombin94@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, in version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-
 
 from gettext import gettext as _
 from typing import Optional
@@ -45,7 +29,7 @@ class DetailsView(Adw.Bin):
     __pages = {}
 
     # region Widgets
-    leaflet = Gtk.Template.Child()
+    split_view = Gtk.Template.Child()
     default_view = Gtk.Template.Child()
     stack_bottle = Gtk.Template.Child()
     sidebar_headerbar = Gtk.Template.Child()
@@ -61,6 +45,18 @@ class DetailsView(Adw.Bin):
     spinner_tasks = Gtk.Template.Child()
 
     # endregion
+
+    @property
+    def leaflet(self):
+        # Compatibility property for legacy code expecting Adw.Leaflet
+        return self
+
+    def navigate(self, direction):
+        # Compatibility method for legacy code calling leaflet.navigate()
+        if direction == Adw.NavigationDirection.FORWARD:
+            self.split_view.set_show_content(True)
+        else:
+            self.split_view.set_show_content(False)
 
     def __init__(self, window, config: Optional[BottleConfig] = None, **kwargs):
         super().__init__(**kwargs)
@@ -85,14 +81,14 @@ class DetailsView(Adw.Bin):
 
         self.btn_back.connect("clicked", self.go_back)
         self.btn_back_sidebar.connect("clicked", self.go_back_sidebar)
-        self.window.main_leaf.connect("notify::visible-child", self.unload_view)
+        self.window.main_nav.connect("notify::visible-page", self.unload_view)
         self.default_actions.append(self.view_bottle.actions)
 
         # region signals
         self.stack_bottle.connect("notify::visible-child", self.__on_page_change)
         self.btn_operations.connect("activate", self.__on_operations_toggled)
         self.btn_operations.connect("notify::visible", self.__spin_tasks_toggle)
-        self.leaflet.connect("notify::folded", self.__on_leaflet_folded)
+        self.split_view.connect("notify::collapsed", self.__on_split_view_collapsed)
         # endregion
 
         RunAsync(self.build_pages)
@@ -105,11 +101,11 @@ class DetailsView(Adw.Bin):
         self.content_title.set_title(title)
         self.content_title.set_subtitle(subtitle)
 
-    def __on_leaflet_folded(self, widget, *_args):
-        folded = widget.get_folded()
-        self.sidebar_headerbar.set_show_end_title_buttons(folded)
-        self.content_headerbar.set_show_start_title_buttons(folded)
-        self.btn_back_sidebar.set_visible(folded)
+    def __on_split_view_collapsed(self, widget, *_args):
+        collapsed = widget.get_collapsed()
+        self.sidebar_headerbar.set_show_end_title_buttons(collapsed)
+        self.content_headerbar.set_show_start_title_buttons(collapsed)
+        self.btn_back_sidebar.set_visible(collapsed)
 
     def __on_page_change(self, *_args):
         """
@@ -238,10 +234,10 @@ class DetailsView(Adw.Bin):
             self.spinner_tasks.set_visible(False)
 
     def go_back(self, _widget=False):
-        self.window.main_leaf.navigate(Adw.NavigationDirection.BACK)
+        self.window.main_nav.pop()
 
     def go_back_sidebar(self, *_args):
-        self.leaflet.navigate(Adw.NavigationDirection.BACK)
+        self.split_view.set_show_content(False)
 
     def unload_view(self, *_args):
         while self.stack_bottle.get_first_child():

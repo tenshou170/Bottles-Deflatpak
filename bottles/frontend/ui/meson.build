@@ -1,4 +1,3 @@
-pkgdatadir = join_paths(get_option('prefix'), get_option('datadir'), meson.project_name())
 gnome = import('gnome')
 blueprints = custom_target('blueprints',
   input: files(
@@ -61,6 +60,10 @@ blueprints = custom_target('blueprints',
     'window.blp',
     'details-preferences.blp',
     'help-overlay.blp',
+    'preferences-system.blp',
+    'preferences-components.blp',
+    'preferences-graphics.blp',
+    'preferences-performance.blp',
   ),
   output: '.',
   command: [find_program('blueprint-compiler'), 'batch-compile', '@OUTPUT@', '@CURRENT_SOURCE_DIR@', '@INPUT@'],)

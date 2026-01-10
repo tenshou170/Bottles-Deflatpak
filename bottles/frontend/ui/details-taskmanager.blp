@@ -1,11 +1,10 @@
 using Gtk 4.0;
 
 template $TaskManagerView: ScrolledWindow {
-  TreeView treeview_processes {
-    enable-grid-lines: horizontal;
-
-    [internal-child selection]
-    TreeSelection {}
+  ColumnView columnview_processes {
+    hexpand: true;
+    vexpand: true;
+    show-column-separators: true;
   }
 }
 

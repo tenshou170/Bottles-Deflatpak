@@ -1,19 +1,4 @@
 # onboard.py
-#
-# Copyright 2025 mirkobrombin <brombin94@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, in version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
 
 from gettext import gettext as _
 
@@ -29,7 +14,7 @@ class OnboardDialog(Adw.Dialog):
     __gtype_name__ = "OnboardDialog"
     __installing = False
     __progress_total = 0
-    __settings = Gtk.Settings.get_default()
+    __style_manager = Adw.StyleManager.get_default()
 
     # region Widgets
     carousel = Gtk.Template.Child()
@@ -67,20 +52,18 @@ class OnboardDialog(Adw.Dialog):
         self.btn_back.connect("clicked", self.__previous_page)
         self.btn_next.connect("clicked", self.__next_page)
         self.btn_install.connect("clicked", self.__install_runner)
-        self.__settings.connect(
-            "notify::gtk-application-prefer-dark-theme", self.__theme_changed
-        )
+        self.__style_manager.connect("notify::dark", self.__theme_changed)
 
         self.btn_close.set_sensitive(False)
 
-        if self.__settings.get_property("gtk-application-prefer-dark-theme"):
+        if self.__style_manager.get_dark():
             self.img_welcome.set_from_resource(self.images[1])
 
         self.__page_changed()
 
-    def __theme_changed(self, settings, key):
+    def __theme_changed(self, style_manager, _key):
         self.img_welcome.set_from_resource(
-            self.images[settings.get_property("gtk-application-prefer-dark-theme")]
+            self.images[1] if style_manager.get_dark() else self.images[0]
         )
 
     def __get_page(self, index):

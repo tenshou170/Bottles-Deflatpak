@@ -29,7 +29,8 @@ from bottles.backend.models.config import BottleConfig
 from bottles.backend.models.result import Result
 from bottles.backend.state import Task, TaskManager
 from bottles.backend.utils import yaml
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.utils.path import PathUtils
+from bottles.backend.managers.system import SystemManager
 
 logging = Logger()
 
@@ -95,7 +96,7 @@ class BackupManager:
             backup_created = config.dump(path).status
         else:
             task_id = TaskManager.add(Task(title=_("Backup {0}").format(config.Name)))
-            bottle_path = ManagerUtils.get_bottle_path(config)
+            bottle_path = PathUtils.get_bottle_path(config)
             backup_created = BackupManager._create_tarfile(
                 bottle_path, path, exclude_filter=BackupManager.exclude_filter
             )
@@ -174,7 +175,7 @@ class BackupManager:
         logging.info(f"Duplicating bottle: {config.Name} as {name}")
 
         sanitized_name = pathvalidate.sanitize_filename(name, platform="universal")
-        source_path = ManagerUtils.get_bottle_path(config)
+        source_path = PathUtils.get_bottle_path(config)
         destination_path = os.path.join(Paths.bottles, sanitized_name)
 
         return BackupManager._duplicate_bottle_directory(

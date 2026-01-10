@@ -11,8 +11,13 @@ echo "Building ${PKG_NAME}..."
 # Clean up
 rm -rf "${BUILD_DIR}" "${INSTALL_DIR}" "${PKG_NAME}.tar.gz"
 
+MESON_ARGS="--prefix=/usr"
+if [[ "$*" == *"--development"* ]]; then
+    MESON_ARGS="${MESON_ARGS} -Dprofile=development"
+fi
+
 # Build
-meson setup "${BUILD_DIR}" --prefix=/usr
+meson setup "${BUILD_DIR}" ${MESON_ARGS}
 ninja -C "${BUILD_DIR}"
 
 # Install to temp root

@@ -28,8 +28,9 @@ from bottles.backend.logger import Logger
 from bottles.backend.managers.conf import ConfigManager
 from bottles.backend.models.config import BottleConfig
 from bottles.backend.models.result import Result
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
 from bottles.backend.utils.wine import WineUtils
+from bottles.backend.utils.path import PathUtils
 from bottles.backend.wine.executor import WineExecutor
 from bottles.backend.wine.winecommand import WineCommand
 
@@ -88,7 +89,7 @@ class InstallerManager:
         icons path.
         """
         icon_url = self.__repo.get_icon(manifest.get("Name"))
-        bottle_icons_path = f"{ManagerUtils.get_bottle_path(config)}/icons"
+        bottle_icons_path = f"{PathUtils.get_bottle_path(config)}/icons"
         icon_path = f"{bottle_icons_path}/{executable.get('icon')}"
 
         if icon_url is not None:
@@ -140,7 +141,7 @@ class InstallerManager:
     @staticmethod
     def __perform_checks(config, checks: dict):
         """Perform a list of checks"""
-        bottle_path = ManagerUtils.get_bottle_path(config)
+        bottle_path = PathUtils.get_bottle_path(config)
 
         if files := checks.get("files"):
             for f in files:
@@ -229,8 +230,8 @@ class InstallerManager:
     @staticmethod
     def __step_run_script(config: BottleConfig, step: dict):
         placeholders = {
-            "!bottle_path": ManagerUtils.get_bottle_path(config),
-            "!bottle_drive": f"{ManagerUtils.get_bottle_path(config)}/drive_c",
+            "!bottle_path": PathUtils.get_bottle_path(config),
+            "!bottle_drive": f"{PathUtils.get_bottle_path(config)}/drive_c",
             "!bottle_name": config.Name,
             "!bottle_arch": config.Arch,
         }
@@ -251,7 +252,7 @@ class InstallerManager:
         subprocess.Popen(
             f"bash -c '{script}'",
             shell=True,
-            cwd=ManagerUtils.get_bottle_path(config),
+            cwd=PathUtils.get_bottle_path(config),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
         ).communicate()
@@ -259,7 +260,7 @@ class InstallerManager:
 
     @staticmethod
     def __step_update_config(config: BottleConfig, step: dict):
-        bottle = ManagerUtils.get_bottle_path(config)
+        bottle = PathUtils.get_bottle_path(config)
         conf_path = step.get("path")
         conf_type = step.get("type")
         del_keys = step.get("del_keys", {})
@@ -363,7 +364,7 @@ class InstallerManager:
         manifest = self.get_installer(installer[0])
         _config = config
 
-        bottle = ManagerUtils.get_bottle_path(config)
+        bottle = PathUtils.get_bottle_path(config)
         installers = manifest.get("Installers")
         dependencies = manifest.get("Dependencies")
         parameters = manifest.get("Parameters")
@@ -477,9 +478,9 @@ class InstallerManager:
             )
 
         # create Desktop entry
-        bottles_icons_path = os.path.join(ManagerUtils.get_bottle_path(config), "icons")
+        bottles_icons_path = os.path.join(PathUtils.get_bottle_path(config), "icons")
         icon_path = os.path.join(bottles_icons_path, executable.get("icon"))
-        ManagerUtils.create_desktop_entry(_config, _program, False, icon_path)
+        SystemManager.create_desktop_entry(_config, _program, False, icon_path)
 
         if is_final:
             step_fn()

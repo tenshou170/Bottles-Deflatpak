@@ -1,19 +1,4 @@
 # component.py
-#
-# Copyright 2025 mirkobrombin <brombin94@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, in version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
 
 from gettext import gettext as _
 from threading import Event
@@ -23,7 +8,7 @@ from gi.repository import Adw, GObject, Gtk
 
 from bottles.backend.logger import Logger
 from bottles.backend.state import Status
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
 from bottles.backend.utils.threading import RunAsync
 from bottles.frontend.utils.gtk import GtkUtils
 
@@ -168,7 +153,7 @@ class ComponentEntry(Adw.ActionRow):
     def run_browse(self, widget):
         self.btn_download.set_visible(False)
 
-        ManagerUtils.open_filemanager(
+        SystemManager.open_filemanager(
             path_type=self.component_type, component=self.name
         )
 

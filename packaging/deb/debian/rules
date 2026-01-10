@@ -4,4 +4,4 @@
 	dh $@ --buildsystem=meson
 
 override_dh_auto_configure:
-	dh_auto_configure -- --prefix=/usr
+	dh_auto_configure -- --prefix=/usr $(DEB_MESON_FLAGS)

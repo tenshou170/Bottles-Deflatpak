@@ -1,19 +1,4 @@
 # vkbasalt.py
-#
-# Copyright 2025 Hari Rana / TheEvilSkeleton <theevilskeleton@riseup.net>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, either version 3 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 """
 Terminologies:
@@ -25,13 +10,14 @@ smaa: Subpixel Morphological Anti-Aliasing
 clut (or lut): Color LookUp Table
 """
 
+from bottles.backend.utils.path import PathUtils
 import os
 
 from gi.repository import Adw, GLib, Gtk
 from vkbasalt.lib import ParseConfig, parse  # type: ignore [import-untyped]
 
 from bottles.backend.logger import Logger
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
 
 logging = Logger()
 
@@ -91,7 +77,7 @@ class VkBasaltDialog(Adw.Window):
         self.manager = window.manager
         self.config = config
         conf = os.path.join(
-            ManagerUtils.get_bottle_path(self.config), "vkBasalt.conf"
+            PathUtils.get_bottle_path(self.config), "vkBasalt.conf"
         )  # Configuration file location
 
         self.effects = {
@@ -148,7 +134,7 @@ class VkBasaltDialog(Adw.Window):
 
     # Save file
     def __idle_save(self, *args):
-        conf = ManagerUtils.get_bottle_path(self.config)
+        conf = PathUtils.get_bottle_path(self.config)
 
         # Apply default settings and close the dialog if default setting is enabled
         if self.switch_default.get_active() is True:

@@ -1,3 +1,4 @@
+from bottles.backend.utils.path import PathUtils
 import os
 import re
 import shlex
@@ -16,7 +17,7 @@ from bottles.backend.models.process import (
 )
 from bottles.backend.models.result import Result
 from bottles.backend.state import SignalManager, Signals
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
 from bottles.backend.wine.cmd import CMD
 from bottles.backend.wine.explorer import Explorer
 from bottles.backend.wine.msiexec import MsiExec
@@ -189,7 +190,7 @@ class WineExecutor:
         bottle_path = ""
         if config:
             try:
-                bottle_path = ManagerUtils.get_bottle_path(config)
+                bottle_path = PathUtils.get_bottle_path(config)
             except Exception:
                 bottle_path = ""
 
@@ -246,7 +247,7 @@ class WineExecutor:
             return False
 
     def __move_file(self, exec_path, move_upd_fn):
-        new_path = ManagerUtils.move_file_to_bottle(
+        new_path = SystemManager.move_file_to_bottle(
             file_path=exec_path, config=self.config, fn_update=move_upd_fn
         )
         if new_path:
@@ -303,7 +304,7 @@ class WineExecutor:
         launch_id = f"{self.config.Name}:{int(time.time() * 1000)}:{os.getpid()}"
         bottle_id = self.config.Name
         bottle_name = self.config.Name
-        bottle_path = ManagerUtils.get_bottle_path(self.config)
+        bottle_path = PathUtils.get_bottle_path(self.config)
         program_name = (
             os.path.basename(self._raw_exec_path) if self._raw_exec_path else "unknown"
         )

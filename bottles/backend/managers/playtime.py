@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import re
 import atexit
 import hashlib
 import os
@@ -53,48 +52,10 @@ def _utc_now_seconds() -> int:
 def _normalize_path_to_windows(bottle_path: str, program_path: str) -> str:
     """
     Normalize a program path to Windows format for portable program_id hashing.
-
-    This ensures playtime data persists across machines and home directory changes.
-    Copied from WinePath.to_windows(native=True) to avoid needing a BottleConfig object.
-
-    Args:
-        bottle_path: Full path to the bottle (e.g., /home/user/.local/share/bottles/MyBottle)
-        program_path: Program path (can be Unix or Windows format)
-
-    Returns:
-        Windows-format path (e.g., C:\\Program Files\\game.exe)
     """
+    from bottles.backend.utils.path import PathUtils
 
-    # Already Windows format? (copied from WinePath.is_windows)
-    if ":" in program_path or "\\" in program_path:
-        return program_path
-
-    # Convert Unix to Windows - copied from WinePath.to_windows(native=True)
-    # BUT: we can't rely on bottle_path matching the path prefix exactly,
-    # so we extract the drive letter and everything after it generically
-    path = program_path
-
-    if "/drive_" in path:
-        # Extract drive letter and path after drive_X/
-        # Use case-insensitive search but preserve original path case
-        match = re.search(r"/drive_([a-z])/(.+)", path, re.IGNORECASE)
-        if match:
-            drive = match.group(1).upper()
-            rest = match.group(2)  # Keep original case
-            path = f"{drive}:\\{rest.replace('/', chr(92))}"  # chr(92) is backslash
-    elif "/dosdevices/" in path:
-        # Extract drive letter and path after dosdevices/X:/
-        match = re.search(r"/dosdevices/([a-z]):/(.+)", path, re.IGNORECASE)
-        if match:
-            drive = match.group(1).upper()
-            rest = match.group(2)  # Keep original case
-            path = f"{drive}:\\{rest.replace('/', chr(92))}"
-    else:
-        # Just convert slashes
-        path = path.replace("/", "\\")
-
-    # Clean path (copied from WinePath.__clean_path)
-    return path.replace("\n", " ").replace("\r", " ").replace("\t", " ").strip()
+    return PathUtils.to_windows(bottle_path, program_path)
 
 
 def _compute_program_id(bottle_id: str, bottle_path: str, program_path: str) -> str:

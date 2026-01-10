@@ -1,3 +1,4 @@
+from bottles.backend.utils.path import PathUtils
 # dxvk.py
 #
 # Copyright 2025 mirkobrombin <brombin94@gmail.com>
@@ -16,7 +17,7 @@
 #
 
 from bottles.backend.dlls.dll import DLLComponent
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.discovery import DiscoveryManager
 
 
 class LatencyFleXComponent(DLLComponent):
@@ -33,4 +34,4 @@ class LatencyFleXComponent(DLLComponent):
 
     @staticmethod
     def get_base_path(version: str) -> str:
-        return ManagerUtils.get_latencyflex_path(version)
+        return PathUtils.get_latencyflex_path(version)

@@ -1,0 +1,89 @@
+using Gtk 4.0;
+using Adw 1;
+
+template $PreferencesPerformance: Adw.PreferencesGroup {
+  title: _("Performance");
+
+  Adw.ComboRow combo_sync {
+    tooltip-text: _("Enable synchronization to increase performance of multicore processors.");
+    title: _("Synchronization");
+
+    model: StringList {
+      strings [
+        _("System"),
+        _("Esync"),
+        _("Fsync"),
+      ]
+    };
+  }
+
+  Adw.ActionRow row_mangohud {
+    activatable-widget: switch_mangohud;
+    title: _("Monitor Performance");
+    subtitle: _("Display monitoring information such as framerate, temperatures, CPU/GPU load and more on OpenGL and Vulkan using MangoHud.");
+
+    Button btn_manage_mangohud {
+      tooltip-text: _("Manage MangoHud settings");
+      valign: center;
+      icon-name: "applications-system-symbolic";
+
+      styles [
+        "flat",
+      ]
+    }
+
+    Switch switch_mangohud {
+      valign: center;
+    }
+  }
+
+  Adw.ActionRow row_gamemode {
+    activatable-widget: switch_gamemode;
+    title: _("Feral GameMode");
+    subtitle: _("Apply a set of optimizations to your device. Can improve game performance.");
+
+    Switch switch_gamemode {
+      valign: center;
+    }
+  }
+
+  Adw.ActionRow row_vmtouch {
+    activatable-widget: switch_vmtouch;
+    title: _("Preload Game Files");
+    subtitle: _("Improve loading time when launching the game multiple times. The game will take longer to start for the first time.");
+
+    Button btn_manage_vmtouch {
+      tooltip-text: _("Manage vmtouch settings");
+      valign: center;
+      icon-name: "applications-system-symbolic";
+
+      styles [
+        "flat",
+      ]
+    }
+
+    Switch switch_vmtouch {
+      valign: center;
+    }
+  }
+
+  Adw.ActionRow row_obsvkc {
+    activatable-widget: switch_obsvkc;
+    title: _("OBS Game Capture");
+    subtitle: _("Toggle OBS Game Capture for all Vulkan and OpenGL programs.");
+
+    Switch switch_obsvkc {
+      valign: center;
+    }
+  }
+
+  Adw.ActionRow row_use_umu {
+    activatable-widget: switch_use_umu;
+    title: _("umu-launcher");
+    subtitle: _("Use umu-launcher for Proton runners to improve compatibility and performance.");
+
+    Switch switch_use_umu {
+      valign: center;
+    }
+  }
+}

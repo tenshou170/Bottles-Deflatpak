@@ -27,7 +27,7 @@ from bottles.backend.logger import Logger
 from bottles.backend.models.config import BottleConfig
 from bottles.backend.models.samples import Samples
 from bottles.backend.utils import yaml
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.utils.path import PathUtils
 
 logging = Logger()
 
@@ -45,7 +45,7 @@ class TemplateManager:
 
         _uuid = str(uuid.uuid4())
         logging.info(f"Creating new template: {_uuid}")
-        bottle = ManagerUtils.get_bottle_path(config)
+        bottle = PathUtils.get_bottle_path(config)
 
         delattr(config, "Name")
         delattr(config, "Path")
@@ -185,7 +185,7 @@ class TemplateManager:
             shutil.copy2(source, dest)
 
         logging.info(f"Unpacking template: {template['uuid']}")
-        bottle = ManagerUtils.get_bottle_path(config)
+        bottle = PathUtils.get_bottle_path(config)
         _path = os.path.join(Paths.templates, template["uuid"])
 
         shutil.copytree(

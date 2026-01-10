@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from bottles.backend.utils.path import PathUtils
 import os
 import shutil
 from abc import abstractmethod
@@ -23,7 +24,7 @@ from copy import deepcopy
 from bottles.backend.logger import Logger
 from bottles.backend.models.config import BottleConfig
 from bottles.backend.models.enum import Arch
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
 from bottles.backend.wine.reg import Reg
 
 logging = Logger()
@@ -152,7 +153,7 @@ class DLLComponent:
         self, config: BottleConfig, path: str, dll: str, remove: bool = False
     ):
         dll_name = dll.split("/")[-1]
-        bottle = ManagerUtils.get_bottle_path(config)
+        bottle = PathUtils.get_bottle_path(config)
         bottle = os.path.join(bottle, "drive_c", "windows")
         source = os.path.join(self.base_path, path, dll)
         path = self.__get_sys_path(config, path)

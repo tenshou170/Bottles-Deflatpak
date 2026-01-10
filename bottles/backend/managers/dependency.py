@@ -35,7 +35,8 @@ from bottles.backend.models.enum import Arch
 from bottles.backend.models.result import Result
 from bottles.backend.state import Status, Task, TaskManager
 from bottles.backend.utils.generic import validate_url
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.utils.path import PathUtils
+from bottles.backend.managers.system import SystemManager
 from bottles.backend.wine.executor import WineExecutor
 from bottles.backend.wine.reg import Reg, RegItem
 from bottles.backend.wine.regkeys import RegKeys
@@ -387,7 +388,7 @@ class DependencyManager:
     @staticmethod
     def __get_real_dest(config: BottleConfig, dest: str) -> str | bool:
         """This function return the real destination path."""
-        bottle = ManagerUtils.get_bottle_path(config)
+        bottle = PathUtils.get_bottle_path(config)
         _dest = dest
 
         if dest.startswith("temp/"):
@@ -640,7 +641,7 @@ class DependencyManager:
         """Move fonts to the drive_c/windows/Fonts path."""
         path = step["url"]
         path = path.replace("temp/", f"{Paths.temp}/")
-        bottle_path = ManagerUtils.get_bottle_path(config)
+        bottle_path = PathUtils.get_bottle_path(config)
 
         for font in step.get("fonts"):
             font_path = f"{bottle_path}/drive_c/windows/Fonts/"

@@ -2,7 +2,8 @@
 
 from bottles.backend.models.config import BottleConfig, BottleParams
 from bottles.backend.models.result import Result
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
+from bottles.backend.managers.discovery import DiscoveryManager
 from bottles.backend.wine.executor import WineExecutor
 from bottles.backend.wine.winecommand import WineCommand, WineEnv
 
@@ -22,7 +23,7 @@ def test_build_placeholder_map_uses_program_values():
 
     placeholders = WineExecutor._build_placeholder_map(config, program)
 
-    expected_bottle_path = ManagerUtils.get_bottle_path(config)
+    expected_bottle_path = SystemManager.get_bottle_path(config)
     assert placeholders["PROGRAM_NAME"] == "My Game"
     assert placeholders["PROGRAM_PATH"] == "/opt/games/my-game.exe"
     assert placeholders["PROGRAM_DIR"] == "/opt/games"
@@ -105,7 +106,9 @@ def test_run_program_substitutes_placeholders(monkeypatch):
     assert data["exec_path"] == "/games/awesome/game.exe"
     assert data["args"] == "--title=Awesome Game"
     assert data["pre_script"] == "/scripts/Bottle/Awesome Game.sh"
-    assert data["pre_script_args"] == f"--prefix={ManagerUtils.get_bottle_path(config)}"
+    assert (
+        data["pre_script_args"] == f"--prefix={SystemManager.get_bottle_path(config)}"
+    )
     assert data["post_script_args"] == "--dir=/games/awesome"
     assert data["cwd"] == "/games/awesome"
 
@@ -151,11 +154,11 @@ def test_winecommand_filters_host_environment(monkeypatch, tmp_path):
     monkeypatch.setenv("SHOULD_NOT_PASS", "secret")
 
     monkeypatch.setattr(
-        "bottles.backend.wine.winecommand.ManagerUtils.get_bottle_path",
+        "bottles.backend.wine.winecommand.SystemManager.get_bottle_path",
         lambda _config: str(bottle_path),
     )
     monkeypatch.setattr(
-        "bottles.backend.wine.winecommand.ManagerUtils.get_runner_path",
+        "bottles.backend.wine.winecommand.DiscoveryManager.get_runner_path",
         lambda _runner: str(runner_path),
     )
     monkeypatch.setattr(

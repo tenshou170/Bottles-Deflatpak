@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from bottles.backend.utils.path import PathUtils
 import os
 import uuid
 
@@ -22,7 +23,7 @@ import requests
 
 from bottles.backend.logger import Logger
 from bottles.backend.models.config import BottleConfig
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
 
 logging = Logger()
 
@@ -40,7 +41,7 @@ class SteamGridDBManager:
 
     @staticmethod
     def __save_grid(url: str, config: BottleConfig):
-        grids_path = os.path.join(ManagerUtils.get_bottle_path(config), "grids")
+        grids_path = os.path.join(PathUtils.get_bottle_path(config), "grids")
         if not os.path.exists(grids_path):
             os.makedirs(grids_path)
 

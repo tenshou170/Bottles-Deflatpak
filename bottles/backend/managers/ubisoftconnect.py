@@ -15,12 +15,13 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from bottles.backend.utils.path import PathUtils
 import os
 import uuid
 from typing import Optional
 
 from bottles.backend.models.config import BottleConfig
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
 
 
 class UbisoftConnectManager:
@@ -31,7 +32,7 @@ class UbisoftConnectManager:
         """
         paths = [
             os.path.join(
-                ManagerUtils.get_bottle_path(config),
+                PathUtils.get_bottle_path(config),
                 "drive_c/Program Files (x86)/Ubisoft/Ubisoft Game Launcher/cache/configuration/configurations",
             )
         ]
@@ -64,7 +65,7 @@ class UbisoftConnectManager:
         )
         conf_path = UbisoftConnectManager.find_conf_path(config)
         games_path = os.path.join(
-            ManagerUtils.get_bottle_path(config),
+            PathUtils.get_bottle_path(config),
             "drive_c/Program Files (x86)/Ubisoft/Ubisoft Game Launcher/games",
         )
 
@@ -113,7 +114,7 @@ class UbisoftConnectManager:
                 _args = f"uplay://launch/{v['appid']}/0"
                 _path = "C:\\Program Files (x86)\\Ubisoft\\Ubisoft Game Launcher\\UbisoftConnect.exe"
                 _executable = _path.split("\\")[-1]
-                _folder = ManagerUtils.get_exe_parent_dir(config, _path)
+                _folder = SystemManager.get_exe_parent_dir(config, _path)
                 _thumb = (
                     "" if v["thumb_image"] is None else f"ubisoft:{v['thumb_image']}"
                 )

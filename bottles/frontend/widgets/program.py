@@ -1,35 +1,16 @@
+from bottles.backend.utils.path import PathUtils
 # program.py
 #
-# Copyright 2025 mirkobrombin <brombin94@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, in version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
-
-import webbrowser
-from gettext import gettext as _
+# Widget for rendering program entries in the library and details views.
 
 from gi.repository import Adw, Gtk
 
 from bottles.backend.managers.library import LibraryManager
-from bottles.backend.managers.steam import SteamManager
 from bottles.backend.models.result import Result
-from bottles.backend.utils.manager import ManagerUtils
-from bottles.backend.utils.threading import RunAsync
-from bottles.backend.wine.executor import WineExecutor
-from bottles.backend.wine.uninstaller import Uninstaller
-from bottles.backend.wine.winedbg import WineDbg
+from bottles.backend.managers.system import SystemManager
 from bottles.frontend.utils.gtk import GtkUtils
 from bottles.frontend.utils.playtime import PlaytimeService
+from bottles.frontend.utils.program_controller import ProgramController
 from bottles.frontend.windows.launchoptions import LaunchOptionsDialog
 from bottles.frontend.windows.playtimegraph import PlaytimeGraphDialog
 from bottles.frontend.windows.rename import RenameDialog
@@ -40,7 +21,6 @@ from bottles.frontend.windows.rename import RenameDialog
 class ProgramEntry(Adw.ActionRow):
     __gtype_name__ = "ProgramEntry"
 
-    # region Widgets
     btn_menu = Gtk.Template.Child()
     btn_run = Gtk.Template.Child()
     btn_stop = Gtk.Template.Child()
@@ -58,8 +38,6 @@ class ProgramEntry(Adw.ActionRow):
     btn_add_library = Gtk.Template.Child()
     btn_launch_terminal = Gtk.Template.Child()
     pop_actions = Gtk.Template.Child()
-
-    # endregion
 
     def __init__(
         self,
@@ -79,6 +57,7 @@ class ProgramEntry(Adw.ActionRow):
         self.manager = window.manager
         self.config = config
         self.program = program
+        self.controller = ProgramController(window, config, program)
 
         self.set_title(self.program["name"])
 
@@ -90,8 +69,6 @@ class ProgramEntry(Adw.ActionRow):
             self.btn_launch_steam.set_visible(True)
             self.btn_launch_steam.set_sensitive(True)
             self.set_activatable_widget(self.btn_launch_steam)
-        else:
-            self.executable = program.get("executable", "")
 
         if program.get("removed"):
             self.add_css_class("removed")
@@ -110,11 +87,6 @@ class ProgramEntry(Adw.ActionRow):
             if entry.get("id") == program.get("id"):
                 self.btn_add_library.set_visible(False)
 
-        external_programs = []
-        for v in self.config.External_Programs.values():
-            external_programs.append(v["name"])
-
-        """Signal connections"""
         self.btn_run.connect("clicked", self.run_executable)
         self.btn_launch_steam.connect("clicked", self.run_steam)
         self.btn_launch_terminal.connect("clicked", self.run_executable, True)
@@ -122,8 +94,8 @@ class ProgramEntry(Adw.ActionRow):
         self.btn_launch_options.connect("clicked", self.show_launch_options_view)
         self.btn_playtime_stats.connect("clicked", self.show_playtime_stats)
         self.btn_uninstall.connect("clicked", self.uninstall_program)
-        self.btn_hide.connect("clicked", self.hide_program)
-        self.btn_unhide.connect("clicked", self.hide_program)
+        self.btn_hide.connect("clicked", self.toggle_visibility)
+        self.btn_unhide.connect("clicked", self.toggle_visibility)
         self.btn_rename.connect("clicked", self.rename_program)
         self.btn_browse.connect("clicked", self.browse_program_folder)
         self.btn_add_entry.connect("clicked", self.add_entry)
@@ -137,7 +109,7 @@ class ProgramEntry(Adw.ActionRow):
             elif is_running is False:
                 pass
             elif check_boot:
-                self.__is_alive()
+                self.controller.is_process_alive(self.__start_watcher)
 
         # Update subtitle with playtime info
         if not is_steam:
@@ -146,7 +118,6 @@ class ProgramEntry(Adw.ActionRow):
     def __update_subtitle(self):
         """Update the subtitle with playtime information."""
         try:
-            # Create playtime service if tracking is enabled
             if not hasattr(self.manager, "playtime_service"):
                 self.manager.playtime_service = PlaytimeService(self.manager)
 
@@ -154,33 +125,25 @@ class ProgramEntry(Adw.ActionRow):
             if not service.is_enabled():
                 return
 
-            # Get bottle path and program path
-            bottle_path = ManagerUtils.get_bottle_path(self.config)
+            bottle_path = PathUtils.get_bottle_path(self.config)
             program_path = self.program.get("path", "")
-
             if not program_path:
                 return
 
-            # Fetch playtime data
             record = service.get_program_playtime(
                 bottle_id=self.config.Name,
                 bottle_path=bottle_path,
                 program_name=self.program.get("name", "Unknown"),
                 program_path=program_path,
             )
-
-            # Always format subtitle (handles both played and never played cases)
-            subtitle = service.format_subtitle(record)
-            self.set_subtitle(subtitle)
-        except Exception as e:
-            # Log error but don't break the UI
-            import logging
-
-            logging.debug(f"Failed to update playtime subtitle: {e}")
+            self.set_subtitle(service.format_subtitle(record))
+        except Exception:
+            pass
 
     def show_launch_options_view(self, _widget=False):
         def update(_widget, config):
             self.config = config
+            self.controller.config = config
             self.update_programs()
 
         dialog = LaunchOptionsDialog(self, self.config, self.program)
@@ -190,12 +153,11 @@ class ProgramEntry(Adw.ActionRow):
     def show_playtime_stats(self, _widget=False):
         """Show the playtime statistics dialog for this program."""
         from bottles.backend.managers.playtime import _compute_program_id
-        from bottles.backend.utils.manager import ManagerUtils
 
-        self.pop_actions.popdown()  # Close the menu before opening dialog
+        self.pop_actions.popdown()
 
         program_path = self.program.get("path", "")
-        bottle_path = ManagerUtils.get_bottle_path(self.config)
+        bottle_path = PathUtils.get_bottle_path(self.config)
         program_id = _compute_program_id(self.config.Name, bottle_path, program_path)
 
         dialog = PlaytimeGraphDialog(
@@ -213,12 +175,6 @@ class ProgramEntry(Adw.ActionRow):
             status = result.status
         elif isinstance(result, bool):
             status = result
-            if not isinstance(result, bool):
-                status = result.status
-        else:
-            raise NotImplementedError(
-                "Invalid data type, expect bool or Result, but it was %s" % type(result)
-            )
 
         self.btn_run.set_visible(status)
         self.btn_stop.set_visible(not status)
@@ -226,218 +182,66 @@ class ProgramEntry(Adw.ActionRow):
         self.btn_stop.set_sensitive(not status)
 
     def __start_watcher(self, _result=False, _error=False):
-        """
-        Start watching the process if it is running.
-        This method is called if is_running=True is passed or if internal check returns positive.
-        """
-        if isinstance(_result, Result) and not _result.status:
-            return
-        elif isinstance(_result, bool) and not _result:
+        if (isinstance(_result, Result) and not _result.status) or (
+            isinstance(_result, bool) and not _result
+        ):
             return
 
-        winedbg = WineDbg(self.config)
         self.__reset_buttons()
-
-        RunAsync(
-            winedbg.wait_for_process,
-            callback=self.__reset_buttons,
-            name=self.executable,
-            timeout=5,
-        )
-
-    def __is_alive(self):
-        winedbg = WineDbg(self.config)
-        RunAsync(
-            winedbg.is_process_alive,
-            callback=self.__start_watcher,
-            name=self.executable,
-        )
+        self.controller.wait_for_process(self.__reset_buttons)
 
     def run_executable(self, _widget, with_terminal=False):
-        self.pop_actions.popdown()  # workaround #1640
-
-        def _run():
-            WineExecutor.run_program(self.config, self.program, with_terminal)
-            self.pop_actions.popdown()  # workaround #1640
-            return True
-
-        self.window.show_toast(_('Launching "{0}"…').format(self.program["name"]))
-        RunAsync(_run, callback=self.__reset_buttons)
+        self.pop_actions.popdown()
+        self.controller.run(with_terminal, self.__reset_buttons)
         self.__reset_buttons()
 
     def run_steam(self, _widget):
-        self.manager.steam_manager.launch_app(self.config.CompatData)
-        self.window.show_toast(
-            _('Launching "{0}" with Steam…').format(self.program["name"])
-        )
-        self.pop_actions.popdown()  # workaround #1640
+        self.controller.run_steam()
+        self.pop_actions.popdown()
 
     def stop_process(self, widget):
-        self.window.show_toast(_('Stopping "{0}"…').format(self.program["name"]))
-        winedbg = WineDbg(self.config)
-        widget.set_sensitive(False)
-        winedbg.kill_process(self.executable)
-        self.__reset_buttons(True)
+        self.controller.stop(self.__reset_buttons)
 
     @GtkUtils.run_in_main_loop
     def update_programs(self, _result=False, _error=False):
         self.view_bottle.update_programs(config=self.config)
 
     def uninstall_program(self, _widget):
-        uninstaller = Uninstaller(self.config)
-        RunAsync(
-            task_func=uninstaller.from_name,
-            callback=self.update_programs,
-            name=self.program["name"],
+        self.controller.uninstall(self.update_programs)
+
+    def toggle_visibility(self, _widget=None, update=True):
+        self.controller.toggle_visibility(
+            lambda: self.update_programs() if update else None
         )
-
-    def hide_program(self, _widget=None, update=True):
-        status = not self.program.get("removed")
-        msg = _('"{0}" hidden').format(self.program["name"])
-        if not status:
-            msg = _('"{0}" showed').format(self.program["name"])
-
-        self.program["removed"] = status
-        self.save_program()
+        status = self.program.get("removed")
         self.btn_hide.set_visible(not status)
         self.btn_unhide.set_visible(status)
-        self.window.show_toast(msg)
-        if update:
-            self.update_programs()
-
-    def save_program(self):
-        return self.manager.update_config(
-            config=self.config,
-            key=self.program["id"],
-            value=self.program,
-            scope="External_Programs",
-        ).data["config"]
 
     def remove_program(self, _widget=None):
-        self.config = self.manager.update_config(
-            config=self.config,
-            key=self.program["id"],
-            scope="External_Programs",
-            value=None,
-            remove=True,
-        ).data["config"]
-        self.window.show_toast(_('"{0}" removed').format(self.program["name"]))
-        self.update_programs()
+        self.controller.remove(self.update_programs)
 
     def rename_program(self, _widget):
-        def func(new_name):
-            if new_name == self.program["name"]:
-                return
-            old_name = self.program["name"]
-            self.program["name"] = new_name
-            self.manager.update_config(
-                config=self.config,
-                key=self.program["id"],
-                value=self.program,
-                scope="External_Programs",
-            )
+        def on_save(new_name):
+            self.controller.rename(new_name, self.update_programs)
 
-            def async_work():
-                library_manager = LibraryManager()
-                entries = library_manager.get_library()
-
-                for uuid, entry in entries.items():
-                    if entry.get("id") == self.program["id"]:
-                        entries[uuid]["name"] = new_name
-                        library_manager.download_thumbnail(uuid, self.config)
-                        break
-
-                library_manager.__library = entries
-                library_manager.save_library()
-
-            @GtkUtils.run_in_main_loop
-            def ui_update(_result, _error):
-                self.window.page_library.update()
-                self.window.show_toast(
-                    _('"{0}" renamed to "{1}"').format(old_name, new_name)
-                )
-                self.update_programs()
-
-            RunAsync(async_work, callback=ui_update)
-
-        dialog = RenameDialog(self.window, on_save=func, name=self.program["name"])
+        dialog = RenameDialog(self.window, on_save=on_save, name=self.program["name"])
         dialog.present()
 
     def browse_program_folder(self, _widget):
-        ManagerUtils.open_filemanager(
-            config=self.config, path_type="custom", custom_path=self.program["folder"]
-        )
-        self.pop_actions.popdown()  # workaround #1640
+        self.controller.browse_folder()
+        self.pop_actions.popdown()
 
     def add_entry(self, _widget):
-        @GtkUtils.run_in_main_loop
-        def update(result, _error=False):
-            if not result:
-                webbrowser.open("https://docs.usebottles.com/bottles/programs")
-                return
-
-            self.window.show_toast(
-                _('Desktop Entry created for "{0}"').format(self.program["name"])
-            )
-
-        RunAsync(
-            ManagerUtils.create_desktop_entry,
-            callback=update,
-            config=self.config,
-            program={
-                "name": self.program["name"],
-                "executable": self.program["executable"],
-                "path": self.program["path"],
-            },
-        )
+        self.controller.add_desktop_entry()
 
     def add_to_library(self, _widget):
-        def update(_result, _error=False):
-            self.window.update_library()
-            self.window.show_toast(
-                _('"{0}" added to your library').format(self.program["name"])
-            )
-
-        def add_to_library():
-            self.save_program()  # we need to store it in the bottle configuration to keep the reference
-            library_manager = LibraryManager()
-            library_manager.add_to_library(
-                {
-                    "bottle": {"name": self.config.Name, "path": self.config.Path},
-                    "name": self.program["name"],
-                    "id": str(self.program["id"]),
-                    "icon": ManagerUtils.extract_icon(
-                        self.config, self.program["name"], self.program["path"]
-                    ),
-                },
-                self.config,
-            )
-
         self.btn_add_library.set_visible(False)
-        RunAsync(add_to_library, update)
+        self.controller.add_to_library(self.window.update_library)
 
     def add_to_steam(self, _widget):
-        def update(result, _error=False):
-            if result.ok:
-                self.window.show_toast(
-                    _('"{0}" added to your Steam library').format(self.program["name"])
-                )
-
-        steam_manager = SteamManager(self.config)
-        RunAsync(
-            steam_manager.add_shortcut,
-            update,
-            program_name=self.program["name"],
-            program_path=self.program["path"],
-        )
+        self.controller.add_to_steam()
 
     def update_playtime(self, playtime_service):
-        """
-        Update the program subtitle with playtime information.
-
-        Args:
-            playtime_service: Instance of PlaytimeService to fetch and format data.
-        """
         if not playtime_service or not playtime_service.is_enabled():
             return
 
@@ -446,19 +250,9 @@ class ProgramEntry(Adw.ActionRow):
             return
 
         try:
-            # Use bottle name as bottle_id, matching what backend uses
-            bottle_id = self.config.Name
-            bottle_path = self.config.Path
-
             record = playtime_service.get_program_playtime(
-                bottle_id, bottle_path, self.program["name"], program_path
+                self.config.Name, self.config.Path, self.program["name"], program_path
             )
-            subtitle = playtime_service.format_subtitle(record)
-            self.set_subtitle(subtitle)
-        except Exception as e:
-            from bottles.backend.logger import Logger
-
-            logging = Logger()
-            logging.error(
-                f"Failed to update playtime for {self.program['name']}: {e}", exc=e
-            )
+            self.set_subtitle(playtime_service.format_subtitle(record))
+        except Exception:
+            pass

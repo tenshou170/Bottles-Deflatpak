@@ -1,19 +1,4 @@
 # importer.py
-#
-# Copyright 2025 mirkobrombin <brombin94@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, in version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
 
 from gettext import gettext as _
 
@@ -164,4 +149,4 @@ class ImporterView(Adw.Bin):
         dialog.show()
 
     def go_back(self, *_args):
-        self.window.main_leaf.navigate(Adw.NavigationDirection.BACK)
+        self.window.main_nav.pop()

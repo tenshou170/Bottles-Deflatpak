@@ -1,4 +1,3 @@
-pkgdatadir = join_paths(get_option('prefix'), get_option('datadir'), meson.project_name())
 frontenddir = join_paths(pkgdatadir, 'bottles/frontend')
 
 subdir('ui')
@@ -10,7 +9,7 @@ subdir('cli')
 
 configure_file(
   input: 'bottles.py',
-  output: 'bottles',
+  output: BINARY_NAME,
   configuration: conf,
   install: true,
   install_dir: get_option('bindir'),

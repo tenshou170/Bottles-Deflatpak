@@ -1,117 +1,163 @@
-# manager.py
+# system.py
 #
-# Copyright 2025 mirkobrombin <brombin94@gmail.com>
-#
-# This program is free software: you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation, in version 3 of the License.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program.  If not, see <http://www.gnu.org/licenses/>.
-#
+# Specific manager for app directories and cache management.
+
 import os
 import shutil
 from datetime import datetime
-from bottles.backend.utils.portal import PortalUtils
-from gettext import gettext as _
 from glob import glob
-from typing import Optional
+from typing import Any, Optional, Callable
 
 import icoextract  # type: ignore [import-untyped]
 
 from bottles.backend.globals import Paths
 from bottles.backend.logger import Logger
+from bottles.backend.managers.template import TemplateManager
 from bottles.backend.models.config import BottleConfig
 from bottles.backend.models.result import Result
+from bottles.backend.params import APP_ID
 from bottles.backend.state import SignalManager, Signals
+from bottles.backend.utils.file import FileUtils
 from bottles.backend.utils.generic import get_mime
 from bottles.backend.utils.imagemagick import ImageMagickUtils
+from bottles.backend.utils.path import PathUtils
+from bottles.backend.utils.portal import PortalUtils
 
 logging = Logger()
 
 
-class ManagerUtils:
-    """
-    This class contains methods (tools, utilities) that are not
-    directly related to the Manager.
-    """
+class SystemManager:
+    def __init__(self, settings: Any, steam_manager: Any):
+        self.settings = settings
+        self.steam_manager = steam_manager
 
-    @staticmethod
-    def open_filemanager(
-        config: Optional[BottleConfig] = None,
-        path_type: str = "bottle",
-        component: str = "",
-        custom_path: str = "",
-    ):
-        logging.info("Opening the file manager in the path …")
-        path = ""
+    def check_app_dirs(self):
+        """
+        Checks for the existence of the bottles' directories, and creates them
+        if they don't exist.
+        """
+        dirs = [
+            (Paths.runners, "Runners"),
+            (Paths.runtimes, "Runtimes"),
+            (Paths.winebridge, "WineBridge"),
+            (Paths.bottles, "Bottles"),
+            (Paths.dxvk, "Dxvk"),
+            (Paths.vkd3d, "Vkd3d"),
+            (Paths.nvapi, "Nvapi"),
+            (Paths.templates, "Templates"),
+            (Paths.temp, "Temp"),
+            (Paths.latencyflex, "LatencyFleX"),
+        ]
 
-        if path_type == "bottle" and config is None:
-            raise NotImplementedError("bottle type need a valid Config")
+        for path, name in dirs:
+            if not os.path.isdir(path):
+                logging.info(f"{name} path doesn't exist, creating now.")
+                os.makedirs(path, exist_ok=True)
 
-        if path_type == "bottle":
-            bottle_path = ManagerUtils.get_bottle_path(config)
-            if config.Environment == "Steam":
-                bottle_path = config.Path
-            path = f"{bottle_path}/drive_c"
-        elif component != "":
-            if path_type in ["runner", "runner:proton"]:
-                path = ManagerUtils.get_runner_path(component)
-            elif path_type == "dxvk":
-                path = ManagerUtils.get_dxvk_path(component)
-            elif path_type == "vkd3d":
-                path = ManagerUtils.get_vkd3d_path(component)
-            elif path_type == "nvapi":
-                path = ManagerUtils.get_nvapi_path(component)
-            elif path_type == "latencyflex":
-                path = ManagerUtils.get_latencyflex_path(component)
-            elif path_type == "runtime":
-                path = Paths.runtimes
-            elif path_type == "winebridge":
-                path = Paths.winebridge
+        if (
+            self.settings.get_boolean("steam-proton-support")
+            and self.steam_manager.is_steam_supported
+        ):
+            if not os.path.isdir(Paths.steam):
+                logging.info("Steam path doesn't exist, creating now.")
+                os.makedirs(Paths.steam, exist_ok=True)
 
-        if path_type == "custom" and custom_path != "":
-            path = custom_path
+    def _clear_temp(self, force: bool = False):
+        """Clears the temp directory if user setting allows it. Use the force
+        parameter to force clearing the directory.
+        """
+        if self.settings.get_boolean("temp") or force:
+            try:
+                shutil.rmtree(Paths.temp)
+                os.makedirs(Paths.temp, exist_ok=True)
+                logging.info("Temp directory cleaned successfully!")
+            except FileNotFoundError:
+                self.check_app_dirs()
 
-        path = f"file://{path}"
-        SignalManager.send(Signals.GShowUri, Result(data=path))
+    def get_cache_details(self) -> dict:
+        self.check_app_dirs()
+        file_utils = FileUtils()
+
+        temp_size_bytes = file_utils.get_path_size(Paths.temp, human=False)
+        templates = []
+        templates_size_bytes = 0
+
+        for template in TemplateManager.get_templates():
+            template_uuid = template.get("uuid", "")
+            template_path = os.path.join(Paths.templates, template_uuid)
+
+            size_bytes = file_utils.get_path_size(template_path, human=False)
+            templates_size_bytes += size_bytes
+
+            templates.append(
+                {
+                    "uuid": template_uuid,
+                    "env": template.get("env", ""),
+                    "created": template.get("created", ""),
+                    "size": file_utils.get_human_size(size_bytes),
+                    "size_bytes": size_bytes,
+                }
+            )
+
+        total_size_bytes = temp_size_bytes + templates_size_bytes
+
+        return {
+            "temp": {
+                "path": Paths.temp,
+                "size": file_utils.get_human_size(temp_size_bytes),
+                "size_bytes": temp_size_bytes,
+            },
+            "templates": templates,
+            "templates_size": file_utils.get_human_size(templates_size_bytes),
+            "templates_size_bytes": templates_size_bytes,
+            "total_size": file_utils.get_human_size(total_size_bytes),
+            "total_size_bytes": total_size_bytes,
+        }
+
+    def clear_temp_cache(self) -> Result[None]:
+        try:
+            self._clear_temp(force=True)
+        except Exception as ex:
+            logging.error(f"Failed to clear temp cache: {ex}")
+            return Result(False, message=str(ex))
+
+        return Result(True)
+
+    def clear_template_cache(self, template_uuid: str) -> Result[None]:
+        self.check_app_dirs()
+        try:
+            TemplateManager.delete_template(template_uuid)
+        except Exception as ex:
+            logging.error(f"Failed to clear template cache: {ex}")
+            return Result(False, message=str(ex))
+
+        return Result(True)
+
+    def clear_templates_cache(self) -> Result[None]:
+        self.check_app_dirs()
+        try:
+            for template in TemplateManager.get_templates():
+                TemplateManager.delete_template(template.get("uuid", ""))
+        except Exception as ex:
+            logging.error(f"Failed to clear templates cache: {ex}")
+            return Result(False, message=str(ex))
+
+        return Result(True)
+
+    def clear_all_caches(self) -> Result[None]:
+        temp_result = self.clear_temp_cache()
+        if not temp_result.ok:
+            return temp_result
+
+        templates_result = self.clear_templates_cache()
+        if not templates_result.ok:
+            return templates_result
+
+        return Result(True)
 
     @staticmethod
     def get_bottle_path(config: BottleConfig) -> str:
-        if config.Environment == "Steam":
-            return os.path.join(Paths.steam, config.CompatData)
-
-        if config.Custom_Path:
-            return config.Path
-
-        return os.path.join(Paths.bottles, config.Path)
-
-    @staticmethod
-    def get_runner_path(runner: str) -> str:
-        if runner.startswith("sys-"):
-            return runner
-        return f"{Paths.runners}/{runner}"
-
-    @staticmethod
-    def get_dxvk_path(dxvk: str) -> str:
-        return f"{Paths.dxvk}/{dxvk}"
-
-    @staticmethod
-    def get_vkd3d_path(vkd3d: str) -> str:
-        return f"{Paths.vkd3d}/{vkd3d}"
-
-    @staticmethod
-    def get_nvapi_path(nvapi: str) -> str:
-        return f"{Paths.nvapi}/{nvapi}"
-
-    @staticmethod
-    def get_latencyflex_path(latencyflex: str) -> str:
-        return f"{Paths.latencyflex}/{latencyflex}"
+        return PathUtils.get_bottle_path(config)
 
     @staticmethod
     def get_temp_path(dest: str) -> str:
@@ -122,17 +168,22 @@ class ManagerUtils:
         return f"{Paths.templates}/{template}"
 
     @staticmethod
+    def get_exe_parent_dir(config: BottleConfig, executable_path: str):
+        """Get parent directory of the executable."""
+        if "\\" in executable_path:
+            p = "\\".join(executable_path.split("\\")[:-1])
+            p = p.replace("C:\\", "\\drive_c\\").replace("\\", "/")
+            return PathUtils.get_bottle_path(config) + p
+        return os.path.dirname(executable_path)
+
+    @staticmethod
     def move_file_to_bottle(
-        file_path: str, config: BottleConfig, fn_update: callable = None
+        file_path: str, config: BottleConfig, fn_update: Optional[Callable] = None
     ) -> str | bool:
         logging.info(f"Adding file {file_path} to the bottle …")
-        bottle_path = ManagerUtils.get_bottle_path(config)
+        bottle_path = PathUtils.get_bottle_path(config)
 
         if not os.path.exists(f"{bottle_path}/storage"):
-            """
-            If the storage folder does not exist for the bottle,
-            create it before moving the file.
-            """
             os.makedirs(f"{bottle_path}/storage")
 
         file_name = os.path.basename(file_path)
@@ -170,21 +221,12 @@ class ManagerUtils:
             return False
 
     @staticmethod
-    def get_exe_parent_dir(config, executable_path):
-        """Get parent directory of the executable."""
-        if "\\" in executable_path:
-            p = "\\".join(executable_path.split("\\")[:-1])
-            p = p.replace("C:\\", "\\drive_c\\").replace("\\", "/")
-            return ManagerUtils.get_bottle_path(config) + p
-        return os.path.dirname(executable_path)
-
-    @staticmethod
     def extract_icon(config: BottleConfig, program_name: str, program_path: str) -> str:
         from bottles.backend.wine.winepath import WinePath
 
         winepath = WinePath(config)
-        icon = "com.usebottles.bottles-program"
-        bottle_icons_path = os.path.join(ManagerUtils.get_bottle_path(config), "icons")
+        icon = f"{APP_ID}-program"
+        bottle_icons_path = os.path.join(PathUtils.get_bottle_path(config), "icons")
 
         try:
             if winepath.is_windows(program_path):
@@ -212,14 +254,14 @@ class ManagerUtils:
             else:
                 shutil.move(ico_dest_temp, ico_dest)
                 icon = ico_dest
-        except:  # TODO: handle those
+        except:  # pylint: disable=bare-except
             pass
 
         return icon
 
     @staticmethod
     def create_desktop_entry(
-        config,
+        config: BottleConfig,
         program: dict,
         skip_icon: bool = False,
         custom_icon: str = "",
@@ -231,12 +273,13 @@ class ManagerUtils:
             except OSError:
                 return False
 
-        cmd_legacy = "bottles"
-        cmd_cli = "bottles-cli"
-        icon = "com.usebottles.bottles-program"
+        is_devel = "Devel" in APP_ID
+        cmd_legacy = "bottles" if not is_devel else "bottles-devel"
+        cmd_cli = "bottles-cli" if not is_devel else "bottles-devel-cli"
+        icon = f"{APP_ID}-program"
 
         if not skip_icon and not custom_icon:
-            icon = ManagerUtils.extract_icon(
+            icon = SystemManager.extract_icon(
                 config, program.get("name"), program.get("path")
             )
         elif custom_icon:
@@ -259,7 +302,6 @@ class ManagerUtils:
                 for file in existing_files:
                     os.remove(file)
 
-            # [Bug-]issue #4247 (single- to double-quotes in Desktop Entry spec -> "The Exec key"):
             with open(desktop_file, "w") as f:
                 f.write("[Desktop Entry]\n")
                 f.write(f"Name={program.get('name')}\n")
@@ -280,20 +322,53 @@ class ManagerUtils:
 
             return True
         if PortalUtils.is_available():
-            # WIP: Dynamic launcher support via portals
             portal = PortalUtils.get_portal()
             if portal:
-                # ... (rest of the WIP logic can be added here)
                 pass
 
         return False
 
     @staticmethod
-    def browse_wineprefix(wineprefix: dict):
-        """Presents a dialog to browse the wineprefix."""
-        ManagerUtils.open_filemanager(
-            path_type="custom", custom_path=wineprefix.get("Path")
-        )
+    def open_filemanager(
+        config: Optional[BottleConfig] = None,
+        path_type: str = "bottle",
+        component: str = "",
+        custom_path: str = "",
+    ):
+        from bottles.backend.managers.discovery import DiscoveryManager
+
+        logging.info("Opening the file manager in the path …")
+        path = ""
+
+        if path_type == "bottle" and config is None:
+            raise NotImplementedError("bottle type need a valid Config")
+
+        if path_type == "bottle":
+            bottle_path = PathUtils.get_bottle_path(config)
+            if config.Environment == "Steam":
+                bottle_path = config.Path
+            path = f"{bottle_path}/drive_c"
+        elif component != "":
+            if path_type in ["runner", "runner:proton"]:
+                path = PathUtils.get_runner_path(component)
+            elif path_type == "dxvk":
+                path = PathUtils.get_dxvk_path(component)
+            elif path_type == "vkd3d":
+                path = PathUtils.get_vkd3d_path(component)
+            elif path_type == "nvapi":
+                path = PathUtils.get_nvapi_path(component)
+            elif path_type == "latencyflex":
+                path = PathUtils.get_latencyflex_path(component)
+            elif path_type == "runtime":
+                path = Paths.runtimes
+            elif path_type == "winebridge":
+                path = Paths.winebridge
+
+        if path_type == "custom" and custom_path != "":
+            path = custom_path
+
+        path = f"file://{path}"
+        SignalManager.send(Signals.GShowUri, Result(data=path))
 
     @staticmethod
     def get_languages(
@@ -303,6 +378,8 @@ class ManagerUtils:
         get_index=False,
         get_locales=False,
     ):
+        from gettext import gettext as _
+
         locales = [
             "sys",
             "bg_BG",
@@ -396,3 +473,10 @@ class ManagerUtils:
             return locales
 
         return names
+
+    @staticmethod
+    def browse_wineprefix(wineprefix: dict):
+        path = wineprefix.get("Path")
+        if not path:
+            return
+        SystemManager.open_filemanager(custom_path=path, path_type="custom")

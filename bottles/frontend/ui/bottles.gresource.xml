@@ -33,6 +33,10 @@
     <file preprocess="xml-stripblanks">details-preferences.ui</file>
     <file preprocess="xml-stripblanks">details-versioning.ui</file>
     <file preprocess="xml-stripblanks">details-taskmanager.ui</file>
+    <file preprocess="xml-stripblanks">preferences-system.ui</file>
+    <file preprocess="xml-stripblanks">preferences-components.ui</file>
+    <file preprocess="xml-stripblanks">preferences-graphics.ui</file>
+    <file preprocess="xml-stripblanks">preferences-performance.ui</file>
     <file preprocess="xml-stripblanks">preferences.ui</file>
     <file preprocess="xml-stripblanks">importer.ui</file>
     <file preprocess="xml-stripblanks">library.ui</file>

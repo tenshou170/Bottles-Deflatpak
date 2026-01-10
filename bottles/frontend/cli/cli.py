@@ -49,7 +49,8 @@ from bottles.backend.models.config import BottleConfig
 from bottles.backend.models.registry_rule import RegistryRule
 from bottles.backend.runner import Runner
 from bottles.backend.utils import json, yaml
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.utils.path import PathUtils
+from bottles.backend.managers.system import SystemManager
 from bottles.backend.wine.cmd import CMD
 from bottles.backend.wine.control import Control
 from bottles.backend.wine.executor import WineExecutor
@@ -67,16 +68,16 @@ from bottles.frontend.params import APP_ID
 
 # noinspection DuplicatedCode
 class CLI:
-    settings = Gio.Settings.new(APP_ID)
+    settings = Gio.Settings.new("@APP_ID@")
 
     def __init__(self):
         # self.__clear()
 
         self.parser = argparse.ArgumentParser(
-            description="Bottles is a tool to manage your bottles"
+            description="@APP_NAME@ is a tool to manage your bottles"
         )
         self.parser.add_argument(
-            "-v", "--version", action="version", version=f"Bottles {APP_VERSION}"
+            "-v", "--version", action="version", version=f"@APP_NAME@ {APP_VERSION}"
         )
         self.parser.add_argument(
             "-j", "--json", action="store_true", help="Outputs in JSON format"
@@ -493,7 +494,7 @@ class CLI:
             _folder = os.path.dirname(_path)
         elif winepath.is_windows(_path):
             _executable = _path.split("\\")[-1]
-            _folder = ManagerUtils.get_exe_parent_dir(bottle, _path)
+            _folder = SystemManager.get_exe_parent_dir(bottle, _path)
         else:
             sys.stderr.write(f"Unsupported path type: {_path}")
             exit(1)
@@ -850,7 +851,7 @@ class CLI:
             exit(1)
 
         bottle = mng.local_bottles[_bottle]
-        path = ManagerUtils.get_bottle_path(bottle)
+        path = PathUtils.get_bottle_path(bottle)
         standalone_path = os.path.join(path, "standalone")
         winecommand = WineCommand(config=bottle, command='"$@"')
         env = winecommand.get_env(return_clean_env=True)

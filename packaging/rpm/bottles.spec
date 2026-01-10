@@ -1,4 +1,8 @@
+%if 0%{?is_devel}
+Name:       bottles-devel
+%else
 Name:       bottles
+%endif
 Epoch:      2
 Version:    60.1
 Release:    %autorelease
@@ -109,7 +113,7 @@ Features:
 
 
 %build
-%meson
+%meson %{?meson_args}
 %meson_build
 
 

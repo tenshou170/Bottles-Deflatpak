@@ -15,10 +15,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 
+from bottles.backend.utils.path import PathUtils
 import os
 
 from bottles.backend.models.config import BottleConfig
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.managers.system import SystemManager
 
 
 class OriginManager:
@@ -29,7 +30,7 @@ class OriginManager:
         """
         paths = [
             os.path.join(
-                ManagerUtils.get_bottle_path(config),
+                PathUtils.get_bottle_path(config),
                 "drive_c/ProgramData/Origin/LocalContent",
             )
         ]

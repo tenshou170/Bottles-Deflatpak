@@ -13,6 +13,8 @@ from bottles.backend.globals import (
     mangohud_available,
     obs_vkc_available,
     vmtouch_available,
+    ntsync_available,
+    umu_run_available,
 )
 from bottles.backend.logger import Logger
 from bottles.backend.managers.runtime import RuntimeManager
@@ -22,10 +24,11 @@ from bottles.backend.models.result import Result
 from bottles.backend.utils.display import DisplayUtils
 from bottles.backend.utils.generic import detect_encoding
 from bottles.backend.utils.gpu import GPUUtils
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.utils.path import PathUtils
 from bottles.backend.utils.steam import SteamUtils
 from bottles.backend.utils.terminal import TerminalUtils
 from bottles.backend.utils.wine import WineUtils
+from bottles.backend.wine.strategies.pipeline import WineExecutionPipeline
 
 logging = Logger()
 
@@ -191,7 +194,7 @@ class WineCommand:
         if config.Environment == "Steam":
             bottle = config.Path
         else:
-            bottle = ManagerUtils.get_bottle_path(config)
+            bottle = PathUtils.get_bottle_path(config)
 
         if not cwd:
             """
@@ -209,6 +212,46 @@ class WineCommand:
         return cwd
 
     def get_env(
+        self,
+        environment: Optional[dict] = None,
+        return_steam_env: bool = False,
+        return_clean_env: bool = False,
+    ) -> dict:
+        pipeline = WineExecutionPipeline(
+            self.config,
+            return_steam_env=return_steam_env,
+            return_clean_env=return_clean_env,
+            is_terminal=self.terminal,
+            is_minimal=self.minimal,
+            metadata={
+                "gamescope_activated": self.gamescope_activated,
+            },
+        )
+        context = pipeline.run()
+
+        # Handle manual environment overrides from argument
+        if environment:
+            # Handle WINEDLLOVERRIDES specially
+            if environment.get("WINEDLLOVERRIDES"):
+                context.concat_env(
+                    "WINEDLLOVERRIDES", environment["WINEDLLOVERRIDES"], sep=";"
+                )
+
+            # Special case for DXVK_CONFIG_FILE
+            if environment.get("DXVK_CONFIG_FILE", "") == "bottle_root":
+                bottle_path = PathUtils.get_bottle_path(self.config)
+                environment["DXVK_CONFIG_FILE"] = os.path.join(bottle_path, "dxvk.conf")
+
+            for k, v in environment.items():
+                if k != "WINEDLLOVERRIDES":
+                    context.add_env(k, v)
+
+        # Store context for get_cmd usage if needed
+        self._execution_context = context
+
+        return context.env
+
+    def legacy_get_env(  # Renaming to delete later
         self,
         environment: Optional[dict] = None,
         return_steam_env: bool = False,
@@ -233,15 +276,18 @@ class WineCommand:
         if environment is None:
             environment = {}
 
-        bottle = ManagerUtils.get_bottle_path(config)
-        runner_path = ManagerUtils.get_runner_path(config.Runner)
+        bottle = PathUtils.get_bottle_path(config)
+        runner_path = PathUtils.get_runner_path(config.Runner)
 
         if config.Environment == "Steam":
             bottle = config.Path
             runner_path = config.RunnerPath
 
         if SteamUtils.is_proton(runner_path):
+            proton_root_path = runner_path
             runner_path = SteamUtils.get_dist_directory(runner_path)
+        else:
+            proton_root_path = None
 
         # Clean some env variables which can cause trouble
         # ref: <https://github.com/bottlesdevs/Bottles/issues/2127>
@@ -388,7 +434,7 @@ class WineCommand:
 
         # LatencyFleX environment variables
         if params.latencyflex and not return_steam_env:
-            _lf_path = ManagerUtils.get_latencyflex_path(config.LatencyFleX)
+            _lf_path = PathUtils.get_latencyflex_path(config.LatencyFleX)
             _lf_layer_path = os.path.join(
                 _lf_path, "layer/usr/share/vulkan/implicit_layer.d"
             )
@@ -412,7 +458,7 @@ class WineCommand:
         # vkBasalt environment variables
         if params.vkbasalt and not self.minimal:
             vkbasalt_conf_path = os.path.join(
-                ManagerUtils.get_bottle_path(config), "vkBasalt.conf"
+                PathUtils.get_bottle_path(config), "vkBasalt.conf"
             )
             if os.path.isfile(vkbasalt_conf_path):
                 env.add("VKBASALT_CONFIG_FILE", vkbasalt_conf_path)
@@ -511,13 +557,38 @@ class WineCommand:
             # Wine arch
             env.add("WINEARCH", arch)
 
+        if ntsync_available:
+            # Modern vanilla Wine (v10.16+) handles NTsync automatically if /dev/ntsync is accessible.
+            # We only explicitly set the env vars for Proton runners which may require them.
+            if SteamUtils.is_proton(runner_path):
+                env.add("PROTON_USE_NTSYNC", "1")
+
+        if umu_run_available and proton_root_path and params.use_umu:
+            # umu-run expects PROTONPATH to be the root of the Proton directory
+            env.add("PROTONPATH", proton_root_path)
+            # Resolve UMU ID
+            umu_id = getattr(params, "umu_id", "umu-default")
+            if umu_id == "umu-default":
+                try:
+                    from bottles.backend.utils.umu import UmuDatabase
+
+                    found_id = UmuDatabase.get_umu_id(config.Name)
+                    if found_id:
+                        umu_id = found_id
+                        logging.info(f"Found UMU ID for {config.Name}: {umu_id}")
+                except Exception as e:
+                    logging.warning(f"Failed to lookup UMU ID: {e}")
+
+            env.add("GAMEID", umu_id)
+            env.add("STORE", getattr(params, "umu_store", "none"))
+
         apply_wayland_preferences(env, params)
 
         return env.get()["envs"]
 
     def _get_runner_info(self) -> tuple[str, str]:
         config = self.config
-        runner = ManagerUtils.get_runner_path(config.Runner)
+        runner = PathUtils.get_runner_path(config.Runner)
         arch = config.Arch
         runner_runtime = ""
 
@@ -533,8 +604,12 @@ class WineCommand:
             based on check if files exists.
             Additionally, check for its corresponding runtime.
             """
-            runner_runtime = SteamUtils.get_associated_runtime(runner)
-            runner = os.path.join(SteamUtils.get_dist_directory(runner), "bin/wine")
+            # Ensure we have the root path for runtime lookup
+            runner_root = SteamUtils.get_proton_root(runner) or runner
+            runner_runtime = SteamUtils.get_associated_runtime(runner_root)
+            runner = os.path.join(
+                SteamUtils.get_dist_directory(runner_root), "bin/wine"
+            )
 
         elif runner.startswith("sys-"):
             """
@@ -566,6 +641,85 @@ class WineCommand:
         return_clean_cmd: bool = False,
         environment: Optional[dict] = None,
     ) -> str:
+        # 1. Pipeline execution or retrieval
+        if hasattr(self, "_execution_context"):
+            self._execution_context
+            # Note: We might need to re-run or adjust if flags changed,
+            # but usually they match what was done in __init__
+            pipeline = WineExecutionPipeline(
+                self.config,
+                **{
+                    "return_steam_env": return_steam_cmd
+                    or return_clean_cmd,  # wait, return_clean_env is not in args
+                },
+            )  # This is getting messy, let's just re-run for now if needed or trust __init__
+
+        # Consistent approach: always run pipeline if we want modularity
+        pipeline = WineExecutionPipeline(
+            self.config,
+            return_steam_env=return_steam_cmd or return_clean_cmd,
+            return_clean_env=return_clean_cmd,
+            is_terminal=self.terminal,
+            is_minimal=self.minimal,
+            metadata={
+                "gamescope_activated": self.gamescope_activated,
+                "gamescope_bin": self._get_gamescope_cmd(return_steam_cmd).split(" ")[
+                    0
+                ],
+                "gamescope_args": " ".join(
+                    self._get_gamescope_cmd(return_steam_cmd).split(" ")[1:]
+                ),
+                "mangohud_available": mangohud_available,
+            },
+        )
+        pipeline.run()
+
+        # 2. Base command generation
+        cmd = pipeline.generate_command(command)
+
+        # 3. Handle extra arguments from self.arguments
+        if self.arguments:
+            prefix, suffix, extracted_env = SteamUtils.handle_launch_options(
+                self.arguments
+            )
+            if prefix:
+                cmd = f"{prefix} {cmd}"
+            if suffix:
+                cmd = f"{cmd} {suffix}"
+            if extracted_env:
+                # This affects the environment, which might have already been returned by get_env
+                # However, in __init__, get_cmd is called BEFORE get_env.
+                if environment is not None:
+                    environment.update(extracted_env)
+
+        # 4. Pre/Post scripts
+        if post_script not in (None, ""):
+            post_cmd_parts = [post_script]
+            if post_script_args not in (None, ""):
+                post_cmd_parts.extend(shlex.split(post_script_args))
+            post_cmd = " ".join(shlex.quote(part) for part in post_cmd_parts)
+            cmd = f"{cmd} ; sh {post_cmd}"
+
+        if pre_script not in (None, ""):
+            pre_cmd_parts = [pre_script]
+            if pre_script_args not in (None, ""):
+                pre_cmd_parts.extend(shlex.split(pre_script_args))
+            pre_cmd = " ".join(shlex.quote(part) for part in pre_cmd_parts)
+            cmd = f"sh {pre_cmd} ; {cmd}"
+
+        return cmd
+
+    def legacy_get_cmd(
+        self,
+        command,
+        pre_script: Optional[str] = None,
+        post_script: Optional[str] = None,
+        pre_script_args: Optional[str] = None,
+        post_script_args: Optional[str] = None,
+        return_steam_cmd: bool = False,
+        return_clean_cmd: bool = False,
+        environment: Optional[dict] = None,
+    ) -> str:
         config = self.config
         params = config.Parameters
         runner = self.runner
@@ -578,6 +732,27 @@ class WineCommand:
 
         if not return_steam_cmd and not return_clean_cmd:
             command = f"{runner} {command}"
+
+        if umu_run_available and not return_steam_cmd and params.use_umu:
+            runner_path = PathUtils.get_runner_path(config.Runner)
+            if SteamUtils.is_proton(runner_path):
+                # umu-run expects PROTONPATH to be the root of the Proton directory
+                # SteamUtils.get_dist_directory(runner_path) returns the /dist or /files sub-dir
+                # We need the parent for umu-run
+                # However, if it's already a direct proton path, we use it.
+                # WINEPREFIX is already in env, but umu-run can also take it as env.
+                # umu-run [FILE [ARG...]]
+                # Prefix the command with umu-run
+                # We remove the runner from the command if we use umu-run?
+                # umu-run executes the file.
+                # If we have "path/to/wine exe.exe", umu-run path/to/wine exe.exe might not be what we want.
+                # Actually umu-run handles the proton/wine itself if PROTONPATH is set?
+                # Example: WINEPREFIX=~/.wine PROTONPATH=~/GE-Proton9-4 umu-run foo.exe
+                # So if we use umu-run, we should NOT include the runner in the command.
+                command = command.replace(f"{runner} ", "", 1)
+                command = f"umu-run {command}"
+                # We also need to ensure GAMEID and STORE are set if available.
+                # For now, we'll use defaults or research how to pull them from config.
 
         if not self.minimal:
             if gamemode_available and params.gamemode:
@@ -763,7 +938,7 @@ class WineCommand:
         return SandboxManager(
             envs=self.env,
             chdir=self.cwd,
-            share_paths_rw=[ManagerUtils.get_bottle_path(self.config)],
+            share_paths_rw=[PathUtils.get_bottle_path(self.config)],
             share_paths_ro=[p for p in [Paths.runners, Paths.temp] if p],
             share_net=self.config.Sandbox.share_net,
             share_sound=self.config.Sandbox.share_sound,

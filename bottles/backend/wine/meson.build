@@ -1,4 +1,3 @@
-pkgdatadir = join_paths(get_option('prefix'), get_option('datadir'), meson.project_name())
 winedir = join_paths(pkgdatadir, 'bottles/backend/wine')
 
 bottles_sources = [
@@ -41,3 +40,5 @@ bottles_sources = [
 ]
 
 install_data(bottles_sources, install_dir: winedir)
+
+subdir('strategies')

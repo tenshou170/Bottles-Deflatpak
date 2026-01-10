@@ -20,7 +20,8 @@ import uuid
 
 from bottles.backend.models.config import BottleConfig
 from bottles.backend.utils import json
-from bottles.backend.utils.manager import ManagerUtils
+from bottles.backend.utils.path import PathUtils
+from bottles.backend.managers.system import SystemManager
 
 
 class EpicGamesStoreManager:
@@ -31,7 +32,7 @@ class EpicGamesStoreManager:
         """
         paths = [
             os.path.join(
-                ManagerUtils.get_bottle_path(config),
+                PathUtils.get_bottle_path(config),
                 "drive_c/ProgramData/Epic/UnrealEngineLauncher/LauncherInstalled.dat",
             )
         ]
@@ -71,7 +72,7 @@ class EpicGamesStoreManager:
                     "EpicGamesLauncher.exe"
                 )
                 _executable = _path.split("\\")[-1]
-                _folder = ManagerUtils.get_exe_parent_dir(config, _path)
+                _folder = SystemManager.get_exe_parent_dir(config, _path)
                 games.append(
                     {
                         "executable": _path,
